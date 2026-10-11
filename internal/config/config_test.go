@@ -47,5 +47,5 @@ func TestInvalidLevel(t *testing.T) {
 }
 
 func TestDefaultPath(t *testing.T) {
-	assert.Equal(t, "/h/.config/shell-manager/config.toml", config.DefaultPath("/h"))
+	assert.Equal(t, "/h/.shm/config.toml", config.DefaultPath("/h"))
 }

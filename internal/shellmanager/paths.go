@@ -13,7 +13,7 @@ type Paths struct {
 	GeneratedZshrc string // ~/.config/shell-manager/zshrc
 	Stub           string // ~/.zshrc
 	UserZshDir     string // ~/.config/zsh
-	StateDir       string // ~/.local/state/shell-manager
+	ShmDir         string // ~/.shm: shm's own config, state, log, lock, tmp
 	StateFile      string
 	LockFile       string
 	LogFile        string
@@ -24,7 +24,7 @@ type Paths struct {
 // NewPaths returns the paths for a home directory.
 func NewPaths(home string) Paths {
 	config := filepath.Join(home, ".config", "shell-manager")
-	state := filepath.Join(home, ".local", "state", "shell-manager")
+	shm := filepath.Join(home, ".shm")
 	return Paths{
 		Home:           home,
 		ConfigDir:      config,
@@ -32,11 +32,11 @@ func NewPaths(home string) Paths {
 		GeneratedZshrc: filepath.Join(config, "zshrc"),
 		Stub:           filepath.Join(home, ".zshrc"),
 		UserZshDir:     filepath.Join(home, ".config", "zsh"),
-		StateDir:       state,
-		StateFile:      filepath.Join(state, "state.toml"),
-		LockFile:       filepath.Join(state, "lock"),
-		LogFile:        filepath.Join(state, "shell-manager.log"),
-		TmpDir:         filepath.Join(state, "tmp"),
+		ShmDir:         shm,
+		StateFile:      filepath.Join(shm, "state.toml"),
+		LockFile:       filepath.Join(shm, "lock"),
+		LogFile:        filepath.Join(shm, "shm.log"),
+		TmpDir:         filepath.Join(shm, "tmp"),
 		AliasLink:      filepath.Join(home, ".local", "bin", AliasName),
 	}
 }

@@ -99,7 +99,11 @@ func TestPaths(t *testing.T) {
 	p := NewPaths("/h")
 	assert.Equal(t, "/h/.zshrc", p.Stub)
 	assert.Equal(t, "/h/.config/shell-manager/zsh.d", p.ZshD)
-	assert.Equal(t, "/h/.local/state/shell-manager/state.toml", p.StateFile)
+	assert.Equal(t, "/h/.shm", p.ShmDir)
+	assert.Equal(t, "/h/.shm/state.toml", p.StateFile)
+	assert.Equal(t, "/h/.shm/lock", p.LockFile)
+	assert.Equal(t, "/h/.shm/shm.log", p.LogFile)
+	assert.Equal(t, "/h/.shm/tmp", p.TmpDir)
 	assert.Equal(t, "/h/.antidote", p.Expand("~/.antidote"))
 	assert.Equal(t, "/etc/x", p.Expand("/etc/x"))
 }
