@@ -18,7 +18,9 @@
 # `self-update` is blocked unconditionally: it swaps the running executable
 # and never looks at $HOME, so a temp HOME does not make it safe.
 # Text that merely mentions the commands (`grep 'shm update' README.md`,
-# `echo shm setup`) is not an invocation and passes. `bash -c STR`, `eval STR`
+# `echo shm setup`) is not an invocation and passes; so does the body of a
+# heredoc (only $(...) / `...` in an unquoted one are checked, see
+# strip_heredocs). `bash -c STR`, `eval STR`
 # and $(...) / `...` substitutions are checked recursively.
 # Best effort, not a sandbox: it stops accidents, not a determined bypass.
 
@@ -113,12 +115,52 @@ tokenize() {
 	return 0
 }
 
+# strip_heredocs STRING: print STRING with heredoc bodies taken out. The body
+# of a heredoc is data, not commands: with a quoted delimiter (<<'EOF', <<"EOF",
+# <<\EOF) it is dropped; with an unquoted one the shell still expands $(...) and
+# `...` in it, so the body is kept as the argument of a harmless `:` command
+# (the tokenizer then recurses into the substitutions only). `<<<` is not a
+# heredoc. An unterminated heredoc swallows the rest of the text, like bash.
+strip_heredocs() {
+	local line cmp rest out="" body=""
+	local -a pd=() pq=() pdash=()
+	local re='(^|[^<])<<(-?)[[:space:]]*(\\?)(["'"'"']?)([A-Za-z_][A-Za-z0-9_]*)'
+	flush() { # emit the finished unquoted body
+		[[ ${pq[0]} == 0 && -n $body ]] && out+=": \"${body//\"/\\\"}\""$'\n'
+		body=""
+		pd=("${pd[@]:1}") pq=("${pq[@]:1}") pdash=("${pdash[@]:1}")
+	}
+	while IFS= read -r line || [[ -n $line ]]; do
+		if ((${#pd[@]} > 0)); then
+			cmp=$line
+			[[ ${pdash[0]} == 1 ]] && cmp=${line#"${line%%[!$'\t']*}"}
+			if [[ $cmp == "${pd[0]}" ]]; then
+				flush
+			else
+				body+=$line$'\n'
+			fi
+			continue
+		fi
+		out+=$line$'\n'
+		rest=$line
+		while [[ $rest =~ $re ]]; do
+			pd+=("${BASH_REMATCH[5]}")
+			[[ -n ${BASH_REMATCH[2]} ]] && pdash+=(1) || pdash+=(0)
+			[[ -n ${BASH_REMATCH[3]}${BASH_REMATCH[4]} ]] && pq+=(1) || pq+=(0)
+			rest=${rest#*"${BASH_REMATCH[0]}"}
+		done
+	done <<<"$1"
+	while ((${#pd[@]} > 0)); do flush; done
+	printf '%s' "$out"
+}
+
 # check STRING HOME_OK: print a reason and return 1 if STRING invokes a guarded
 # command. HOME_OK=1 when an enclosing command already set a temp HOME.
 check() {
 	local s=$1 inherited=${2:-0}
 	local -a toks seg=()
 	local t
+	s=$(strip_heredocs "$s")
 	tokenize "$s"
 	toks=("${TOK[@]}")
 	toks+=("$SEP")

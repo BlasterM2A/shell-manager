@@ -92,6 +92,22 @@ assert_allowed "git commit -m 'document shm setup; and shm update'"
 assert_allowed 'cat docs/shm-setup.md'
 assert_allowed 'echo hi # shm setup'
 
+# Heredoc bodies are data, not commands (the shell only runs substitutions in
+# an unquoted one).
+NL=$'\n'
+assert_allowed "python3 - <<'EOF'${NL}hint = \"Run \`shm update --config-only\` now\"${NL}shm setup${NL}EOF"
+assert_allowed "cat > notes.md <<\"EOF\"${NL}run shm update${NL}EOF"
+assert_allowed "cat <<-EOF${NL}	shm setup${NL}	EOF"
+assert_allowed "cat <<'A' <<'B'${NL}shm setup${NL}A${NL}shm update${NL}B"
+assert_allowed "cat <<< 'shm setup'"
+assert_blocked "cat <<EOF${NL}\$(shm setup)${NL}EOF"
+assert_blocked "cat <<EOF${NL}\`shm update\`${NL}EOF"
+assert_blocked "cat <<'EOF'${NL}text${NL}EOF${NL}shm setup"
+assert_blocked "cat <<'EOF' && shm setup${NL}text${NL}EOF"
+assert_allowed "cat <<'EOF'${NL}shm setup" # unterminated: bash still reads it as text
+assert_blocked "cat <<EOF${NL}\$(shm setup)" # ...but substitutions in an unquoted one run
+assert_allowed "cat <<EOF${NL}\$(HOME=\$(mktemp -d) shm setup)${NL}EOF"
+
 # Other shm commands and unrelated tools are allowed.
 assert_allowed 'shm doctor'
 assert_allowed 'shm --version'
