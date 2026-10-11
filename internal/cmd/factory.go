@@ -8,12 +8,12 @@ import (
 
 	"github.com/hashicorp/go-retryablehttp"
 
-	"github.com/BlasterM2A/shell-setup/internal/config"
-	"github.com/BlasterM2A/shell-setup/internal/iostreams"
-	applog "github.com/BlasterM2A/shell-setup/internal/log"
-	"github.com/BlasterM2A/shell-setup/internal/selfupdate"
-	"github.com/BlasterM2A/shell-setup/internal/shellsetup"
-	"github.com/BlasterM2A/shell-setup/internal/ui/common"
+	"github.com/BlasterM2A/shell-manager/internal/config"
+	"github.com/BlasterM2A/shell-manager/internal/iostreams"
+	applog "github.com/BlasterM2A/shell-manager/internal/log"
+	"github.com/BlasterM2A/shell-manager/internal/selfupdate"
+	"github.com/BlasterM2A/shell-manager/internal/shellmanager"
+	"github.com/BlasterM2A/shell-manager/internal/ui/common"
 )
 
 // Factory builds dependencies lazily, after flags are parsed (gh pattern).
@@ -26,8 +26,8 @@ type Factory struct {
 
 	Config  func() (config.Config, error)
 	Logger  func() (*slog.Logger, error)
-	System  func() (*shellsetup.RealSystem, error)
-	Engine  func() (*shellsetup.Engine, error)
+	System  func() (*shellmanager.RealSystem, error)
+	Engine  func() (*shellmanager.Engine, error)
 	Updater func() *selfupdate.Updater
 }
 
@@ -52,7 +52,7 @@ func NewFactory(ios *iostreams.IOStreams, home string) *Factory {
 		if f.Quiet {
 			level = slog.LevelError
 		}
-		opts := applog.Options{File: shellsetup.NewPaths(home).LogFile, Level: level, Styles: ios.Styles()}
+		opts := applog.Options{File: shellmanager.NewPaths(home).LogFile, Level: level, Styles: ios.Styles()}
 		if !f.UseTUI() {
 			opts.Console = ios.ErrOut
 		}
@@ -60,14 +60,14 @@ func NewFactory(ios *iostreams.IOStreams, home string) *Factory {
 		logger, _, err := applog.New(opts)
 		return logger, err
 	})
-	f.System = sync.OnceValues(func() (*shellsetup.RealSystem, error) {
+	f.System = sync.OnceValues(func() (*shellmanager.RealSystem, error) {
 		logger, err := f.Logger()
 		if err != nil {
 			return nil, err
 		}
-		return shellsetup.NewRealSystem(home, logger), nil
+		return shellmanager.NewRealSystem(home, logger), nil
 	})
-	f.Engine = sync.OnceValues(func() (*shellsetup.Engine, error) {
+	f.Engine = sync.OnceValues(func() (*shellmanager.Engine, error) {
 		sys, err := f.System()
 		if err != nil {
 			return nil, err
@@ -79,7 +79,7 @@ func NewFactory(ios *iostreams.IOStreams, home string) *Factory {
 		client := retryablehttp.NewClient()
 		client.RetryMax = 3
 		client.Logger = logger
-		e, err := shellsetup.NewEngine(sys, shellsetup.HTTPFetcher{
+		e, err := shellmanager.NewEngine(sys, shellmanager.HTTPFetcher{
 			Client: client.StandardClient(),
 			Token:  os.Getenv("GITHUB_TOKEN"),
 		})
@@ -97,7 +97,7 @@ func NewFactory(ios *iostreams.IOStreams, home string) *Factory {
 }
 
 // executablePath is the real path of the running binary (symlinks such as
-// the shs alias resolved), or "" when it cannot be determined.
+// the shm alias resolved), or "" when it cannot be determined.
 func executablePath() string {
 	exe, err := os.Executable()
 	if err != nil {

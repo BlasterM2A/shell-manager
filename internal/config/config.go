@@ -1,5 +1,5 @@
 // Package config loads what the user wants (intent). Facts the tool writes
-// about the machine live in shellsetup's state, not here.
+// about the machine live in shellmanager's state, not here.
 package config
 
 import (
@@ -18,7 +18,7 @@ import (
 	"github.com/knadh/koanf/v2"
 )
 
-const envPrefix = "SHELL_SETUP_"
+const envPrefix = "SHELL_MANAGER_"
 
 var levels = []string{"debug", "info", "warn", "error"}
 
@@ -29,10 +29,10 @@ type Config struct {
 
 // DefaultPath is where the config file lives.
 func DefaultPath(home string) string {
-	return filepath.Join(home, ".config", "shell-setup", "config.toml")
+	return filepath.Join(home, ".config", "shell-manager", "config.toml")
 }
 
-// Load merges defaults, the file at path (optional), SHELL_SETUP_* env vars
+// Load merges defaults, the file at path (optional), SHELL_MANAGER_* env vars
 // and overrides, in that order.
 func Load(path string, overrides map[string]any) (Config, error) {
 	k := koanf.New(".")

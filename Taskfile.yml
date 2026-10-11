@@ -2,9 +2,9 @@ version: "3"
 
 tasks:
   build:
-    desc: Build ./bin/shell-setup
+    desc: Build ./bin/shell-manager
     cmds:
-      - go build -o bin/shell-setup .
+      - go build -o bin/shell-manager .
   run:
     desc: "Run the CLI: task run -- doctor"
     cmds:

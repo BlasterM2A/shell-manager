@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/BlasterM2A/shell-setup/internal/log"
-	"github.com/BlasterM2A/shell-setup/internal/ui/styles"
+	"github.com/BlasterM2A/shell-manager/internal/log"
+	"github.com/BlasterM2A/shell-manager/internal/ui/styles"
 )
 
 func TestFileGetsEverythingConsoleRespectsLevel(t *testing.T) {
-	file := filepath.Join(t.TempDir(), "state", "shell-setup.log")
+	file := filepath.Join(t.TempDir(), "state", "shell-manager.log")
 	var console bytes.Buffer
 	logger, closeFn, err := log.New(log.Options{
 		File: file, Level: slog.LevelInfo, Console: &console, Styles: styles.New(false),

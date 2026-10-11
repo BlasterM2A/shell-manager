@@ -5,18 +5,18 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/BlasterM2A/shell-setup/internal/shellsetup"
-	"github.com/BlasterM2A/shell-setup/internal/ui/statustable"
-	"github.com/BlasterM2A/shell-setup/internal/ui/steplist"
-	"github.com/BlasterM2A/shell-setup/internal/ui/styles"
+	"github.com/BlasterM2A/shell-manager/internal/shellmanager"
+	"github.com/BlasterM2A/shell-manager/internal/ui/statustable"
+	"github.com/BlasterM2A/shell-manager/internal/ui/steplist"
+	"github.com/BlasterM2A/shell-manager/internal/ui/styles"
 )
 
 // eventMsg maps a domain event to the steplist message that shows it.
-func eventMsg(home string, ev shellsetup.Event) (tea.Msg, bool) {
+func eventMsg(home string, ev shellmanager.Event) (tea.Msg, bool) {
 	switch ev := ev.(type) {
-	case shellsetup.ToolStarted:
+	case shellmanager.ToolStarted:
 		return steplist.StepStarted{ID: "tool:" + ev.ID, Label: toolLabel(ev.ID, ev.Action)}, true
-	case shellsetup.ToolFinished:
+	case shellmanager.ToolFinished:
 		detail := ev.Version
 		if ev.Err != nil {
 			detail = ev.Err.Error()
@@ -25,9 +25,9 @@ func eventMsg(home string, ev shellsetup.Event) (tea.Msg, bool) {
 			ID: "tool:" + ev.ID, Label: toolLabel(ev.ID, ev.Action),
 			Status: resultStatus(ev.Result), Detail: detail,
 		}, true
-	case shellsetup.FileFinished:
+	case shellmanager.FileFinished:
 		detail := ""
-		if ev.Result != shellsetup.ResultOK {
+		if ev.Result != shellmanager.ResultOK {
 			detail = string(ev.Result)
 		}
 		return steplist.StepFinished{
@@ -38,33 +38,33 @@ func eventMsg(home string, ev shellsetup.Event) (tea.Msg, bool) {
 	return nil, false
 }
 
-func toolLabel(id string, a shellsetup.Action) string {
-	if a == shellsetup.ActionNone {
+func toolLabel(id string, a shellmanager.Action) string {
+	if a == shellmanager.ActionNone {
 		return id
 	}
 	return id + " (" + string(a) + ")"
 }
 
-func resultStatus(r shellsetup.Result) styles.Status {
+func resultStatus(r shellmanager.Result) styles.Status {
 	switch r {
-	case shellsetup.ResultOK, shellsetup.ResultRemoved:
+	case shellmanager.ResultOK, shellmanager.ResultRemoved, shellmanager.ResultMigrated:
 		return styles.StatusOK
-	case shellsetup.ResultSkipped:
+	case shellmanager.ResultSkipped:
 		return styles.StatusSkip
-	case shellsetup.ResultModified, shellsetup.ResultWarned:
+	case shellmanager.ResultModified, shellmanager.ResultWarned:
 		return styles.StatusWarn
 	default:
 		return styles.StatusFail
 	}
 }
 
-func checkStatus(s shellsetup.CheckStatus) styles.Status {
+func checkStatus(s shellmanager.CheckStatus) styles.Status {
 	switch s {
-	case shellsetup.CheckOK:
+	case shellmanager.CheckOK:
 		return styles.StatusOK
-	case shellsetup.CheckWarn:
+	case shellmanager.CheckWarn:
 		return styles.StatusWarn
-	case shellsetup.CheckSkip:
+	case shellmanager.CheckSkip:
 		return styles.StatusSkip
 	default:
 		return styles.StatusFail
@@ -72,7 +72,7 @@ func checkStatus(s shellsetup.CheckStatus) styles.Status {
 }
 
 // checkRows turns doctor checks into table rows.
-func checkRows(home string, rep shellsetup.Report) []statustable.Row {
+func checkRows(home string, rep shellmanager.Report) []statustable.Row {
 	rows := make([]statustable.Row, 0, len(rep.Checks))
 	for _, c := range rep.Checks {
 		rows = append(rows, statustable.Row{Status: checkStatus(c.Status), Name: shortPath(home, c.Name), Detail: c.Detail})
@@ -80,11 +80,11 @@ func checkRows(home string, rep shellsetup.Report) []statustable.Row {
 	return rows
 }
 
-func phaseLabel(p shellsetup.Phase) string {
+func phaseLabel(p shellmanager.Phase) string {
 	switch p {
-	case shellsetup.PhasePreflight:
+	case shellmanager.PhasePreflight:
 		return "Checking system packages"
-	case shellsetup.PhaseTools:
+	case shellmanager.PhaseTools:
 		return "Installing tools"
 	default:
 		return "Writing shell config"

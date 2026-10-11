@@ -1,2 +1,2 @@
-exec shell-setup --version
-stdout '^shell-setup dev \(none\)$'
+exec shell-manager --version
+stdout '^shell-manager dev \(none\)$'

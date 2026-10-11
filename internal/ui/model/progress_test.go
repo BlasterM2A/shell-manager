@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/BlasterM2A/shell-setup/internal/ui/common"
-	"github.com/BlasterM2A/shell-setup/internal/ui/model"
-	"github.com/BlasterM2A/shell-setup/internal/ui/steplist"
-	"github.com/BlasterM2A/shell-setup/internal/ui/styles"
+	"github.com/BlasterM2A/shell-manager/internal/ui/common"
+	"github.com/BlasterM2A/shell-manager/internal/ui/model"
+	"github.com/BlasterM2A/shell-manager/internal/ui/steplist"
+	"github.com/BlasterM2A/shell-manager/internal/ui/styles"
 )
 
 func newProgress(onInterrupt func()) model.Progress {

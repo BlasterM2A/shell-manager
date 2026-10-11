@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/BlasterM2A/shell-setup/internal/ui/notice"
-	"github.com/BlasterM2A/shell-setup/internal/ui/styles"
+	"github.com/BlasterM2A/shell-manager/internal/ui/notice"
+	"github.com/BlasterM2A/shell-manager/internal/ui/styles"
 )
 
 // SelfUpdateOptions are the inputs of self-update.
@@ -42,6 +42,6 @@ func runSelfUpdate(ctx context.Context, opts *SelfUpdateOptions) error {
 		return nil
 	}
 	_, _ = fmt.Fprintln(out, notice.Render(c, notice.Props{Status: styles.StatusOK, Text: "Updated to " + v}))
-	_, _ = fmt.Fprintln(out, notice.Render(c, notice.Props{Status: styles.StatusInfo, Text: "Run `shell-setup update` to apply the new configuration."}))
+	_, _ = fmt.Fprintln(out, notice.Render(c, notice.Props{Status: styles.StatusInfo, Text: "Run `shm update` to apply the new configuration."}))
 	return nil
 }

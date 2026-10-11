@@ -1,0 +1,18 @@
+# The tools shell-manager installs. Each id is a module in tools/<id>.toml.
+# To add or remove a tool, edit this list; a module left out stays in the
+# codebase (and keeps being validated) but is not installed.
+tools = [
+    # built-ins (shell-manager needs them)
+    "zsh",
+    "mise",
+    # shell
+    "antidote",
+    "starship",
+    "fzf",
+    "zoxide",
+    "nerdfont",
+    # AI CLIs (optional)
+    "claude",
+    "junie",
+    "agy",
+]

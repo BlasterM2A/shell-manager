@@ -12,27 +12,27 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/BlasterM2A/shell-setup/internal/shellsetup"
+	"github.com/BlasterM2A/shell-manager/internal/shellmanager"
 )
 
-func fakeOp(events ...shellsetup.Event) operation {
-	return func(_ context.Context, ch chan<- shellsetup.Event) (shellsetup.Report, error) {
+func fakeOp(events ...shellmanager.Event) operation {
+	return func(_ context.Context, ch chan<- shellmanager.Event) (shellmanager.Report, error) {
 		defer close(ch)
 		for _, ev := range events {
 			ch <- ev
 		}
-		return shellsetup.Report{Tools: []shellsetup.ToolReport{{ID: "starship", Result: shellsetup.ResultOK}}}, nil
+		return shellmanager.Report{Tools: []shellmanager.ToolReport{{ID: "starship", Result: shellmanager.ResultOK}}}, nil
 	}
 }
 
-func staticSummary(shellsetup.Report, error) string { return "SUMMARY\n" }
+func staticSummary(shellmanager.Report, error) string { return "SUMMARY\n" }
 
 func TestRunPlainWhenNotTTY(t *testing.T) {
 	f, out := newTestFactory(t)
 	op := fakeOp(
-		shellsetup.PhaseStarted{Phase: shellsetup.PhaseTools},
-		shellsetup.ToolFinished{ID: "starship", Result: shellsetup.ResultOK, Version: "1.0"},
-		shellsetup.FileFinished{Path: filepath.Join(f.Home, ".zshrc"), Result: shellsetup.ResultModified},
+		shellmanager.PhaseStarted{Phase: shellmanager.PhaseTools},
+		shellmanager.ToolFinished{ID: "starship", Result: shellmanager.ResultOK, Version: "1.0"},
+		shellmanager.FileFinished{Path: filepath.Join(f.Home, ".zshrc"), Result: shellmanager.ResultModified},
 	)
 
 	res, err := runWithProgress(context.Background(), f, "Setting up", op, staticSummary)
@@ -49,7 +49,7 @@ func TestRunPlainWhenNotTTY(t *testing.T) {
 func TestRunTUIReturnsReport(t *testing.T) {
 	f, _ := newTestFactory(t)
 	var screen bytes.Buffer
-	op := fakeOp(shellsetup.ToolFinished{ID: "starship", Result: shellsetup.ResultOK})
+	op := fakeOp(shellmanager.ToolFinished{ID: "starship", Result: shellmanager.ResultOK})
 
 	res, err := runTUI(context.Background(), f, "Setting up", op, staticSummary,
 		tea.WithInput(nil), tea.WithOutput(&screen), tea.WithWindowSize(80, 24))
@@ -63,12 +63,12 @@ func TestRunTUIWaitsForOpWhenProgramFails(t *testing.T) {
 	killed, kill := context.WithCancel(context.Background())
 	kill() // p.Run returns an error right away
 	var finished atomic.Bool
-	op := func(ctx context.Context, ch chan<- shellsetup.Event) (shellsetup.Report, error) {
+	op := func(ctx context.Context, ch chan<- shellmanager.Event) (shellmanager.Report, error) {
 		defer close(ch)
 		<-ctx.Done() // runTUI must cancel the op...
 		time.Sleep(50 * time.Millisecond)
 		finished.Store(true) // ...and wait for it to finish
-		return shellsetup.Report{}, ctx.Err()
+		return shellmanager.Report{}, ctx.Err()
 	}
 
 	_, err := runTUI(context.Background(), f, "Setting up", op, staticSummary,

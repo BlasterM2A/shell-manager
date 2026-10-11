@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/BlasterM2A/shell-setup/internal/shellsetup"
+	"github.com/BlasterM2A/shell-manager/internal/shellmanager"
 )
 
 // UpdateOptions are the inputs of update.
@@ -36,8 +36,8 @@ func runUpdate(ctx context.Context, opts *UpdateOptions) error {
 	if err != nil {
 		return err
 	}
-	op := func(ctx context.Context, events chan<- shellsetup.Event) (shellsetup.Report, error) {
-		return e.Update(ctx, shellsetup.UpdateOptions{Force: opts.Force}, events)
+	op := func(ctx context.Context, events chan<- shellmanager.Event) (shellmanager.Report, error) {
+		return e.Update(ctx, shellmanager.UpdateOptions{Force: opts.Force}, events)
 	}
 	return runApply(ctx, opts.Factory, e, "Updating your shell", op)
 }

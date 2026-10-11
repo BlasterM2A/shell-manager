@@ -4,10 +4,10 @@ package model
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/BlasterM2A/shell-setup/internal/ui/common"
-	"github.com/BlasterM2A/shell-setup/internal/ui/notice"
-	"github.com/BlasterM2A/shell-setup/internal/ui/steplist"
-	"github.com/BlasterM2A/shell-setup/internal/ui/styles"
+	"github.com/BlasterM2A/shell-manager/internal/ui/common"
+	"github.com/BlasterM2A/shell-manager/internal/ui/notice"
+	"github.com/BlasterM2A/shell-manager/internal/ui/steplist"
+	"github.com/BlasterM2A/shell-manager/internal/ui/styles"
 )
 
 // Done ends the progress view; Summary is shown below the steps.

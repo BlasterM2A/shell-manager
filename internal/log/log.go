@@ -11,7 +11,7 @@ import (
 
 	charmlog "charm.land/log/v2"
 
-	"github.com/BlasterM2A/shell-setup/internal/ui/styles"
+	"github.com/BlasterM2A/shell-manager/internal/ui/styles"
 )
 
 // Options configure New.

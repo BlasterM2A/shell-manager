@@ -6,7 +6,7 @@
 *.zsh text eol=lf
 *.go text eol=lf
 *.txtar text eol=lf
-internal/shellsetup/registry/files/** text eol=lf
+internal/shellmanager/registry/files/** text eol=lf
 
 # Config files are text too.
 *.toml text eol=lf

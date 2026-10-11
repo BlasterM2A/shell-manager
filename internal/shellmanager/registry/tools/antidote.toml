@@ -1,0 +1,23 @@
+id = "antidote"
+kind = "plugin"
+depends = ["zsh"]
+system_packages = ["git"]
+
+[install]
+backend = "archive"
+repo = "mattmc3/antidote"
+dest = "~/.antidote"
+
+[check]
+path = "~/.antidote/antidote.zsh"
+
+[shell]
+priority = 30
+snippet = '''
+source "$HOME/.antidote/antidote.zsh"
+antidote load "$HOME/.config/shell-manager/plugins.txt"
+'''
+
+[[files]]
+src = "files/antidote/plugins.txt"
+dest = "~/.config/shell-manager/plugins.txt"

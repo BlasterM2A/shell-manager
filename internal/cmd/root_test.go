@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/BlasterM2A/shell-setup/internal/iostreams"
+	"github.com/BlasterM2A/shell-manager/internal/iostreams"
 )
 
 func newTestFactory(t *testing.T) (*Factory, *bytes.Buffer) {
@@ -24,7 +24,7 @@ func TestRootVersion(t *testing.T) {
 	root.SetArgs([]string{"--version"})
 
 	require.NoError(t, root.Execute())
-	assert.Equal(t, "shell-setup dev (none)\n", out.String())
+	assert.Equal(t, "shell-manager dev (none)\n", out.String())
 }
 
 func TestRootRegistersCommands(t *testing.T) {
@@ -33,7 +33,8 @@ func TestRootRegistersCommands(t *testing.T) {
 	for _, c := range NewRootCmd(f).Commands() {
 		names = append(names, c.Name())
 	}
-	assert.Subset(t, names, []string{"init", "update", "doctor", "self-update"})
+	assert.Subset(t, names, []string{"setup", "update", "doctor", "self-update"})
+	assert.NotContains(t, names, "init")
 }
 
 func TestGlobalFlags(t *testing.T) {

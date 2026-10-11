@@ -11,11 +11,11 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Backups shell-setup makes when replacing a file (never expected in the repo)
+# Backups shell-manager makes when replacing a file (never expected in the repo)
 *.bak.*
 
 # Local Claude Code session/skill settings — personal to this machine,
-# not part of the shell-setup tool itself.
+# not part of the shell-manager tool itself.
 .claude/
 
 # Go build output
