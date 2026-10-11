@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/fs"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -43,9 +44,18 @@ func (e *Engine) migrateFromShellSetup() ([]FileReport, error) {
 	}
 	if len(moved) > 0 {
 		reports = append(reports, FileReport{Path: e.Paths.ConfigDir, Result: ResultMigrated})
+		// Until the shell phase rewrites ~/.zshrc, the old stub still sources
+		// ~/.config/shell-setup/zshrc: keep that path working in case this run
+		// stops early (apt failure, Ctrl-C). removeCompatLink drops it.
+		if _, err := e.System.Lstat(old.ConfigDir); errors.Is(err, fs.ErrNotExist) {
+			if err := e.System.Symlink(e.Paths.ConfigDir, old.ConfigDir); err != nil {
+				return reports, err
+			}
+		}
 	}
 
-	moved, err = e.mergeDir(old.StateDir, e.Paths.StateDir)
+	// Files the new install.sh/run recreate are disposable in the old dir.
+	moved, err = e.mergeDir(old.StateDir, e.Paths.StateDir, "bootstrap.sha256", "lock", "tmp")
 	if err != nil {
 		return reports, err
 	}
@@ -66,8 +76,8 @@ func (e *Engine) migrateFromShellSetup() ([]FileReport, error) {
 		if err != nil {
 			return reports, err
 		}
-		if p == old.Alias && info.Mode()&fs.ModeSymlink == 0 {
-			continue // a real file named shs belongs to the user
+		if p == old.Alias && !e.isOldAliasLink(old.Alias, info) {
+			continue // a real file, or a link to something else, belongs to the user
 		}
 		if err := e.System.Remove(p); err != nil {
 			return reports, err
@@ -78,13 +88,19 @@ func (e *Engine) migrateFromShellSetup() ([]FileReport, error) {
 }
 
 // mergeDir moves every entry of from into to unless to already has an entry
-// with that name, then removes from if it ended up empty. It returns the
-// names it moved.
-func (e *Engine) mergeDir(from, to string) ([]string, error) {
-	if _, err := e.System.Lstat(from); errors.Is(err, fs.ErrNotExist) {
+// with that name; such a conflicting entry is deleted from from when its
+// name is listed in disposable, and left in place otherwise. from is removed
+// if it ended up empty; a symlink from (the compatibility link) is left
+// alone. It returns the names it moved.
+func (e *Engine) mergeDir(from, to string, disposable ...string) ([]string, error) {
+	info, err := e.System.Lstat(from)
+	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
+	}
+	if info.Mode()&fs.ModeSymlink != 0 {
+		return nil, nil
 	}
 	if err := e.System.MkdirAll(to, 0o755); err != nil {
 		return nil, err
@@ -101,6 +117,11 @@ func (e *Engine) mergeDir(from, to string) ([]string, error) {
 	for _, src := range entries {
 		dst := filepath.Join(to, filepath.Base(src))
 		if _, err := e.System.Lstat(dst); err == nil {
+			if slices.Contains(disposable, filepath.Base(src)) {
+				if err := e.System.RemoveAll(src); err != nil {
+					return moved, err
+				}
+			}
 			continue // never overwrite
 		} else if !errors.Is(err, fs.ErrNotExist) {
 			return moved, err
@@ -151,8 +172,33 @@ func (e *Engine) oldInstallLeftovers() []string {
 			left = append(left, p)
 		}
 	}
-	if info, err := e.System.Lstat(old.Alias); err == nil && info.Mode()&fs.ModeSymlink != 0 {
+	if info, err := e.System.Lstat(old.Alias); err == nil && e.isOldAliasLink(old.Alias, info) {
 		left = append(left, old.Alias)
 	}
 	return left
+}
+
+// isOldAliasLink reports whether path is the shs link shell-setup created
+// (pointing at a binary named shell-setup), not a link of the user's own.
+func (e *Engine) isOldAliasLink(path string, info fs.FileInfo) bool {
+	if info.Mode()&fs.ModeSymlink == 0 {
+		return false
+	}
+	target, err := e.System.Readlink(path)
+	return err == nil && filepath.Base(target) == oldName
+}
+
+// removeCompatLink drops the ~/.config/shell-setup link left by the
+// migration once ~/.zshrc no longer sources the old path (a hand-edited stub
+// keeps it, and doctor keeps reporting it).
+func (e *Engine) removeCompatLink() error {
+	link := oldInstallPaths(e.Paths.Home).ConfigDir
+	info, err := e.System.Lstat(link)
+	if err != nil || info.Mode()&fs.ModeSymlink == 0 {
+		return nil
+	}
+	if stub, err := e.System.ReadFile(e.Paths.Stub); err == nil && strings.Contains(string(stub), "/.config/"+oldName+"/") {
+		return nil
+	}
+	return e.System.Remove(link)
 }

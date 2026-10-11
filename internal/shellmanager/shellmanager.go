@@ -149,6 +149,9 @@ func (e *Engine) apply(ctx context.Context, m mode, force bool, events chan<- Ev
 	if err != nil {
 		return rep, err
 	}
+	if err := e.removeCompatLink(); err != nil {
+		return rep, fmt.Errorf("removing the shell-setup compatibility link: %w", err)
+	}
 	if e.Executable != "" {
 		alias, err := e.ensureAlias()
 		events <- FileFinished(alias)
