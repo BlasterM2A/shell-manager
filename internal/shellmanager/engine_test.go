@@ -274,6 +274,21 @@ func TestChangesDefaultShellWhenNotZsh(t *testing.T) {
 	assert.Contains(t, rec.commands(), "chsh -s "+zsh)
 }
 
+func TestBrokenZshrcMarkersStillLinkAliasAndChangeShell(t *testing.T) {
+	e, rec, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
+	rec.out["getent passwd tester"] = "tester:x:1000:1000::/home/tester:/bin/bash"
+	broken := blockBegin + "\n"
+	require.NoError(t, os.WriteFile(e.Paths.Zshrc, []byte(broken), 0o644))
+
+	rep, _, err := runOp(t, setupOp(e))
+
+	assert.ErrorIs(t, err, ErrBrokenMarkers)
+	zsh := filepath.Join(e.Paths.Home, ".local", "bin", "zsh")
+	assert.Contains(t, rec.commands(), "chsh -s "+zsh)
+	assert.True(t, rep.ShellChanged)
+	assert.Equal(t, broken, read(t, e.Paths.Zshrc))
+}
+
 func TestChshFallsBackToSudo(t *testing.T) {
 	e, rec, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
 	rec.out["getent passwd tester"] = "tester:x:1000:1000::/home/tester:/bin/bash"
