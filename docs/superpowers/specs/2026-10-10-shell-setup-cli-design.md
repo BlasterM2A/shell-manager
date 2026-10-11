@@ -2,6 +2,10 @@
 
 **Fecha:** 2026-10-10
 **Estado:** Pendiente de revisión
+**Nota (2026-10-11):** la herramienta se renombró a `shell-manager` (alias
+`shm`) y `init` pasó a ser `setup`; ver
+`2026-10-11-shell-manager-redesign-design.md`, que prevalece en nombres,
+rutas, comandos, instalador y migración.
 **Sustituye a:** `2026-09-19-shell-setup-design.md` en distribución, arquitectura
 y composición del `.zshrc`. Las decisiones de stack de shell (zsh, starship,
 antidote, fzf, zoxide, mise, Nerd Font, AI CLIs) se mantienen.
