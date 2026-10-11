@@ -17,6 +17,8 @@ type State struct {
 	SchemaVersion int `toml:"schema_version"`
 	// Files maps each managed file to the hash of what shell-manager wrote.
 	Files map[string]string `toml:"files"`
+	// Blocks maps each file holding an shm block to the hash of that block.
+	Blocks map[string]string `toml:"blocks"`
 	// Versions records versions backends know but checks cannot report.
 	Versions map[string]string `toml:"versions"`
 }
@@ -41,6 +43,9 @@ func LoadState(sys System, path string) (*State, error) {
 	st.SchemaVersion = stateSchemaVersion
 	if st.Files == nil {
 		st.Files = map[string]string{}
+	}
+	if st.Blocks == nil {
+		st.Blocks = map[string]string{}
 	}
 	if st.Versions == nil {
 		st.Versions = map[string]string{}

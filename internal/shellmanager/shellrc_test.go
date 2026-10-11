@@ -17,7 +17,7 @@ func newShellWriter(t *testing.T) shellWriter {
 	sys, _ := newTestSystem(t)
 	cat, err := DefaultCatalog()
 	require.NoError(t, err)
-	st := &State{Files: map[string]string{}, Versions: map[string]string{}}
+	st := &State{Files: map[string]string{}, Blocks: map[string]string{}, Versions: map[string]string{}}
 	return shellWriter{
 		sys:     sys,
 		catalog: cat,

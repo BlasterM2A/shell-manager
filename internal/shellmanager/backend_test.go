@@ -11,7 +11,7 @@ import (
 
 func testEnv(t *testing.T, f *fakeFetcher) (Env, *recorder) {
 	sys, rec := newTestSystem(t)
-	st := &State{Files: map[string]string{}, Versions: map[string]string{}}
+	st := &State{Files: map[string]string{}, Blocks: map[string]string{}, Versions: map[string]string{}}
 	return Env{System: sys, Fetcher: f, Paths: NewPaths(sys.HomeDir()), State: st}, rec
 }
 
