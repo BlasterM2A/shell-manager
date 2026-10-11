@@ -1,0 +1,4 @@
+# >>> shm >>>
+# Managed by shm; changes inside this block are overwritten. Config: ~/.zsh/
+[[ -r "$HOME/.zsh/init.zsh" ]] && source "$HOME/.zsh/init.zsh"
+# <<< shm <<<

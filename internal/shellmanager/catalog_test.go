@@ -168,7 +168,11 @@ func TestEmbeddedCatalogIsValid(t *testing.T) {
 	cat, err := DefaultCatalog()
 	require.NoError(t, err)
 	require.NotEmpty(t, cat.Tools())
-	for _, src := range []string{"files/profile/zshrc", "files/profile/zshrc-stub", "files/profile/20-core.zsh", "files/profile/70-aliases.zsh"} {
+	srcs := []string{"files/zsh/zshenv-block", "files/zsh/zshrc-block"}
+	for _, name := range shellProfile {
+		srcs = append(srcs, "files/zsh/"+name)
+	}
+	for _, src := range srcs {
 		_, err := cat.File(src)
 		assert.NoError(t, err, src)
 	}

@@ -96,6 +96,15 @@ func (f *fakeFetcher) Fetch(_ context.Context, url string) ([]byte, error) {
 	return b, nil
 }
 
+// runZsh runs `zsh -c script` non-interactively with a clean environment
+// and HOME set, returning stdout and stderr combined.
+func runZsh(zsh, home, script string) (string, error) {
+	cmd := exec.Command(zsh, "-c", script)
+	cmd.Env = []string{"HOME=" + home, "PATH=/usr/bin:/bin", "TERM=dumb"}
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
 func lookSystemZsh() (string, error) { return exec.LookPath("zsh") }
 
 func runZshSyntaxCheck(zsh, file string) (string, error) {

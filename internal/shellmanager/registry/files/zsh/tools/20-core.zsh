@@ -1,4 +1,4 @@
-# managed by shell-manager (profile: core)
+# Managed by shm (profile: core)
 autoload -Uz compinit && compinit
 
 HISTFILE="$HOME/.zsh_history"

@@ -42,18 +42,20 @@ func TestDoctorFlagsModifiedAndMissingManagedFiles(t *testing.T) {
 	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
 	_, _, err := runOp(t, setupOp(e))
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(e.Paths.Stub, []byte("hand edit"), 0o644))
-	require.NoError(t, os.Remove(e.Paths.GeneratedZshrc))
+	initZsh := filepath.Join(e.Paths.ZshDir, "init.zsh")
+	envZsh := filepath.Join(e.Paths.ZshDir, "env.zsh")
+	require.NoError(t, os.WriteFile(initZsh, []byte("hand edit"), 0o644))
+	require.NoError(t, os.Remove(envZsh))
 
 	rep, err := e.Doctor(context.Background())
 	require.NoError(t, err)
 
 	checks := checksByName(rep)
-	assert.Equal(t, CheckWarn, checks[e.Paths.Stub].Status)
-	assert.Contains(t, checks[e.Paths.Stub].Detail, "modified")
-	assert.Equal(t, CheckWarn, checks[e.Paths.GeneratedZshrc].Status)
-	assert.Contains(t, checks[e.Paths.GeneratedZshrc].Detail, "missing")
-	assert.Equal(t, CheckOK, checks[filepath.Join(e.Paths.ZshD, "20-core.zsh")].Status)
+	assert.Equal(t, CheckWarn, checks[initZsh].Status)
+	assert.Contains(t, checks[initZsh].Detail, "modified")
+	assert.Equal(t, CheckWarn, checks[envZsh].Status)
+	assert.Contains(t, checks[envZsh].Detail, "missing")
+	assert.Equal(t, CheckOK, checks[filepath.Join(e.Paths.ZshDir, "tools", "20-core.zsh")].Status)
 }
 
 func TestDoctorWarnsAboutLoginShell(t *testing.T) {

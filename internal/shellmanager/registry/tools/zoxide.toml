@@ -11,7 +11,4 @@ cmd = ["zoxide", "--version"]
 
 [shell]
 priority = 60
-snippet = '''
-eval "$(zoxide init zsh)"
-alias cd="z"
-'''
+snippet = 'eval "$(zoxide init zsh)"'

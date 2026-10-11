@@ -11,7 +11,7 @@ cmd = ["starship", "--version"]
 
 [shell]
 priority = 50
-snippet = 'eval "$(starship init zsh)"'
+snippet = '[[ $TERM == dumb ]] || eval "$(starship init zsh)"'
 
 [[files]]
 src = "files/starship/starship.toml"

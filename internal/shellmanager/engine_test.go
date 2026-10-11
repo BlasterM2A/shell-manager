@@ -51,11 +51,15 @@ func newTestEngine(t *testing.T, manifests map[string]string) (*Engine, *recorde
 	fsys := fstest.MapFS{}
 	registry, err := fs.Sub(registryFS, "registry")
 	require.NoError(t, err)
-	for _, name := range []string{"zshrc", "zshrc-stub", "20-core.zsh", "70-aliases.zsh"} {
-		data, err := fs.ReadFile(registry, "files/profile/"+name)
-		require.NoError(t, err)
-		fsys["files/profile/"+name] = &fstest.MapFile{Data: data}
-	}
+	err = fs.WalkDir(registry, "files/zsh", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		data, err := fs.ReadFile(registry, p)
+		fsys[p] = &fstest.MapFile{Data: data}
+		return err
+	})
+	require.NoError(t, err)
 	var included []string
 	for id, m := range manifests {
 		fsys["tools/"+id+".toml"] = &fstest.MapFile{Data: []byte(m)}
@@ -130,7 +134,7 @@ func TestSetupInstallsMissingToolsInDependencyOrder(t *testing.T) {
 	}
 	assert.Equal(t, []string{"a", "b"}, started)
 	assert.Equal(t, PhaseStarted{Phase: PhasePreflight}, events[0])
-	assert.FileExists(t, e.Paths.Stub)
+	assert.FileExists(t, e.Paths.Zshrc)
 	assert.FileExists(t, e.Paths.StateFile)
 }
 
@@ -248,7 +252,7 @@ func TestSetupFailsWhenLocked(t *testing.T) {
 	_, _, err = runOp(t, setupOp(e))
 	assert.ErrorIs(t, err, ErrLocked)
 	assert.Empty(t, backend.calls)
-	assert.NoFileExists(t, e.Paths.Stub)
+	assert.NoFileExists(t, e.Paths.Zshrc)
 }
 
 func TestUnsupportedOS(t *testing.T) {
@@ -298,7 +302,7 @@ func TestCancelDuringLastToolSkipsShellPhase(t *testing.T) {
 
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.NotContains(t, events, Event(PhaseStarted{Phase: PhaseShell}))
-	assert.NoFileExists(t, e.Paths.Stub)
+	assert.NoFileExists(t, e.Paths.Zshrc)
 	for _, c := range rec.commands() {
 		assert.NotContains(t, c, "chsh")
 	}

@@ -97,8 +97,9 @@ func TestDryRunRecordsWithoutTouching(t *testing.T) {
 
 func TestPaths(t *testing.T) {
 	p := NewPaths("/h")
-	assert.Equal(t, "/h/.zshrc", p.Stub)
-	assert.Equal(t, "/h/.config/shell-manager/zsh.d", p.ZshD)
+	assert.Equal(t, "/h/.zshrc", p.Zshrc)
+	assert.Equal(t, "/h/.zshenv", p.Zshenv)
+	assert.Equal(t, "/h/.zsh", p.ZshDir)
 	assert.Equal(t, "/h/.shm", p.ShmDir)
 	assert.Equal(t, "/h/.shm/state.toml", p.StateFile)
 	assert.Equal(t, "/h/.shm/lock", p.LockFile)
