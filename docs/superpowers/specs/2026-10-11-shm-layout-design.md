@@ -131,7 +131,8 @@ skip_global_compinit=1
 [[ -n $_SHM_ENV_LOADED ]] && return
 _SHM_ENV_LOADED=1
 typeset -U path
-() { local f; for f in "$HOME"/.zsh/env/*.zsh(N); do source "$f"; done }
+for _shm_f in "$HOME"/.zsh/env/*.zsh(N); do source "$_shm_f"; done
+unset _shm_f
 ```
 
 La guarda evita cargarlo dos veces en la misma shell (`init.zsh` también lo
@@ -149,16 +150,14 @@ duplicados en shells anidadas.
 source "$HOME/.zsh/env.zsh"
 fpath=("$HOME/.zsh/completions" "$HOME/.zsh/functions" $fpath)
 () { (( $# )) && autoload -Uz "$@" } "$HOME"/.zsh/functions/*(N:t)
-() {
-    local d f
-    for d in tools aliases local; do
-        for f in "$HOME/.zsh/$d"/*.zsh(N); do source "$f"; done
-    done
-}
+for _shm_f in "$HOME"/.zsh/{tools,aliases,local}/*.zsh(N); do source "$_shm_f"; done
+unset _shm_f
 ```
 
 Orden: env → functions/completions → tools (compinit en `20-core`) → aliases
-→ local. Las funciones anónimas evitan dejar helpers definidos en la shell.
+→ local. Los archivos se cargan a nivel superior, no dentro de una función:
+dentro de una, un `typeset`/`declare` sin `-g` de un archivo del usuario o de
+un plugin quedaría local y se perdería.
 
 ## Archivos y bloques gestionados
 
