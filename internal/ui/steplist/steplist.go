@@ -2,9 +2,9 @@
 package steplist
 
 import (
-	"github.com/BlasterM2A/shell-setup/internal/ui/common"
-	"github.com/BlasterM2A/shell-setup/internal/ui/statustable"
-	"github.com/BlasterM2A/shell-setup/internal/ui/styles"
+	"github.com/BlasterM2A/shell-manager/internal/ui/common"
+	"github.com/BlasterM2A/shell-manager/internal/ui/statustable"
+	"github.com/BlasterM2A/shell-manager/internal/ui/styles"
 )
 
 // StepStarted marks a step as running, adding it if new.

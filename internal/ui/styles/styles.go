@@ -38,7 +38,7 @@ type Palette struct {
 	Text, Muted, Accent, Success, Warning, Error color.Color
 }
 
-// DefaultPalette is the shell-setup theme.
+// DefaultPalette is the shell-manager theme.
 func DefaultPalette() Palette {
 	return Palette{
 		Text:    lipgloss.Color("#C0CAF5"),

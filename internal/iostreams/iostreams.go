@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/BlasterM2A/shell-setup/internal/ui/styles"
+	"github.com/BlasterM2A/shell-manager/internal/ui/styles"
 )
 
 // IOStreams are the process streams.

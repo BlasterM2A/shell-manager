@@ -20,7 +20,7 @@ func TestCheckReleaseVersion(t *testing.T) {
 
 func TestNonReleaseVersionsDoNotPanic(t *testing.T) {
 	for _, v := range []string{"main", "abc1234", ""} {
-		u := New("BlasterM2A/shell-setup", v)
+		u := New("BlasterM2A/shell-manager", v)
 		_, _, err := u.Latest(context.Background())
 		assert.ErrorIs(t, err, ErrDevBuild)
 		_, _, err = u.Apply(context.Background())

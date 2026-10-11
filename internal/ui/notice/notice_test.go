@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/BlasterM2A/shell-setup/internal/ui/common"
-	"github.com/BlasterM2A/shell-setup/internal/ui/notice"
-	"github.com/BlasterM2A/shell-setup/internal/ui/styles"
+	"github.com/BlasterM2A/shell-manager/internal/ui/common"
+	"github.com/BlasterM2A/shell-manager/internal/ui/notice"
+	"github.com/BlasterM2A/shell-manager/internal/ui/styles"
 )
 
 func TestRenderPlain(t *testing.T) {

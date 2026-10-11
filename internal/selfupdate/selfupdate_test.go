@@ -6,11 +6,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/BlasterM2A/shell-setup/internal/selfupdate"
+	"github.com/BlasterM2A/shell-manager/internal/selfupdate"
 )
 
 func TestDevBuildCannotSelfUpdate(t *testing.T) {
-	u := selfupdate.New("BlasterM2A/shell-setup", "dev")
+	u := selfupdate.New("BlasterM2A/shell-manager", "dev")
 
 	_, _, err := u.Latest(context.Background())
 	assert.ErrorIs(t, err, selfupdate.ErrDevBuild)

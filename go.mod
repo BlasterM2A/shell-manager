@@ -1,4 +1,4 @@
-module github.com/BlasterM2A/shell-setup
+module github.com/BlasterM2A/shell-manager
 
 go 1.27.2
 

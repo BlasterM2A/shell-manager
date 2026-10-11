@@ -1,5 +1,5 @@
 // Package cmd wires the cobra commands: it binds UI components to the
-// shellsetup domain and holds no business logic of its own.
+// shellmanager domain and holds no business logic of its own.
 package cmd
 
 import (
@@ -12,16 +12,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/BlasterM2A/shell-setup/internal/iostreams"
-	"github.com/BlasterM2A/shell-setup/internal/ui/notice"
-	"github.com/BlasterM2A/shell-setup/internal/ui/styles"
+	"github.com/BlasterM2A/shell-manager/internal/iostreams"
+	"github.com/BlasterM2A/shell-manager/internal/ui/notice"
+	"github.com/BlasterM2A/shell-manager/internal/ui/styles"
 )
 
 // Set via -ldflags at release time (see .goreleaser.yml).
 var (
 	version  = "dev"
 	commit   = "none"
-	repoSlug = "BlasterM2A/shell-setup"
+	repoSlug = "BlasterM2A/shell-manager"
 )
 
 // ExitError ends the process with Code without printing anything else;
@@ -33,13 +33,13 @@ func (e *ExitError) Error() string { return fmt.Sprintf("exit status %d", e.Code
 // NewRootCmd builds the command tree. Every command is listed here.
 func NewRootCmd(f *Factory) *cobra.Command {
 	root := &cobra.Command{
-		Use:           "shell-setup",
+		Use:           "shell-manager",
 		Short:         "Bootstrap and maintain your zsh environment",
 		Version:       fmt.Sprintf("%s (%s)", version, commit),
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	root.SetVersionTemplate("shell-setup {{.Version}}\n")
+	root.SetVersionTemplate("shell-manager {{.Version}}\n")
 	flags := root.PersistentFlags()
 	flags.BoolVar(&f.Plain, "plain", false, "plain text output, no interactive UI")
 	flags.BoolVarP(&f.Verbose, "verbose", "v", false, "log debug details")

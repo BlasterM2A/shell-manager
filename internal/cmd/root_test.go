@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/BlasterM2A/shell-setup/internal/iostreams"
+	"github.com/BlasterM2A/shell-manager/internal/iostreams"
 )
 
 func newTestFactory(t *testing.T) (*Factory, *bytes.Buffer) {
@@ -24,7 +24,7 @@ func TestRootVersion(t *testing.T) {
 	root.SetArgs([]string{"--version"})
 
 	require.NoError(t, root.Execute())
-	assert.Equal(t, "shell-setup dev (none)\n", out.String())
+	assert.Equal(t, "shell-manager dev (none)\n", out.String())
 }
 
 func TestRootRegistersCommands(t *testing.T) {

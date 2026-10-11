@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/BlasterM2A/shell-setup/internal/config"
+	"github.com/BlasterM2A/shell-manager/internal/config"
 )
 
 func writeConfig(t *testing.T, body string) string {
@@ -31,7 +31,7 @@ func TestPrecedence(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "warn", cfg.LogLevel, "file overrides default")
 
-	t.Setenv("SHELL_SETUP_LOG_LEVEL", "error")
+	t.Setenv("SHELL_MANAGER_LOG_LEVEL", "error")
 	cfg, err = config.Load(path, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "error", cfg.LogLevel, "env overrides file")
@@ -47,5 +47,5 @@ func TestInvalidLevel(t *testing.T) {
 }
 
 func TestDefaultPath(t *testing.T) {
-	assert.Equal(t, "/h/.config/shell-setup/config.toml", config.DefaultPath("/h"))
+	assert.Equal(t, "/h/.config/shell-manager/config.toml", config.DefaultPath("/h"))
 }

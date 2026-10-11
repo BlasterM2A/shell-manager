@@ -1,4 +1,4 @@
-// Package selfupdate replaces the running shell-setup binary with the
+// Package selfupdate replaces the running shell-manager binary with the
 // latest GitHub release, verified against the release's checksums.txt.
 package selfupdate
 
@@ -38,7 +38,7 @@ func checkReleaseVersion(v string) error {
 
 // ensureWritable verifies files can be created in dir.
 func ensureWritable(dir string) error {
-	f, err := os.CreateTemp(dir, ".shell-setup-write-test-*")
+	f, err := os.CreateTemp(dir, ".shell-manager-write-test-*")
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func (u *Updater) Apply(ctx context.Context) (string, bool, error) {
 	}
 	dir := filepath.Dir(exe)
 	if err := ensureWritable(dir); err != nil {
-		return "", false, fmt.Errorf("cannot update %s: %s is not writable (reinstall shell-setup to ~/.local/bin with the install script): %w", exe, dir, err)
+		return "", false, fmt.Errorf("cannot update %s: %s is not writable (reinstall shell-manager to ~/.local/bin with the install script): %w", exe, dir, err)
 	}
 	if err := up.UpdateTo(ctx, rel, exe); err != nil {
 		return "", false, fmt.Errorf("replacing %s: %w", exe, err)

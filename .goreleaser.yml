@@ -1,27 +1,27 @@
 version: 2
-project_name: shell-setup
+project_name: shell-manager
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: shell-setup
+  - id: shell-manager
     main: .
-    binary: shell-setup
+    binary: shell-manager
     env:
       - CGO_ENABLED=0
     goos: [linux]
     goarch: [amd64, arm64]
     ldflags:
       - -s -w
-      - -X github.com/BlasterM2A/shell-setup/internal/cmd.version={{ .Version }}
-      - -X github.com/BlasterM2A/shell-setup/internal/cmd.commit={{ .ShortCommit }}
-      - -X github.com/BlasterM2A/shell-setup/internal/cmd.repoSlug=BlasterM2A/shell-setup
+      - -X github.com/BlasterM2A/shell-manager/internal/cmd.version={{ .Version }}
+      - -X github.com/BlasterM2A/shell-manager/internal/cmd.commit={{ .ShortCommit }}
+      - -X github.com/BlasterM2A/shell-manager/internal/cmd.repoSlug=BlasterM2A/shell-manager
 
 archives:
   - formats: [tar.gz]
-    # Must match install.sh and go-selfupdate: shell-setup_linux_<arch>.tar.gz
+    # Must match install.sh and go-selfupdate: shell-manager_linux_<arch>.tar.gz
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:

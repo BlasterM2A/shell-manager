@@ -6,20 +6,20 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/BlasterM2A/shell-setup/internal/shellsetup"
-	"github.com/BlasterM2A/shell-setup/internal/ui/model"
-	"github.com/BlasterM2A/shell-setup/internal/ui/notice"
-	"github.com/BlasterM2A/shell-setup/internal/ui/statustable"
-	"github.com/BlasterM2A/shell-setup/internal/ui/steplist"
-	"github.com/BlasterM2A/shell-setup/internal/ui/styles"
+	"github.com/BlasterM2A/shell-manager/internal/shellmanager"
+	"github.com/BlasterM2A/shell-manager/internal/ui/model"
+	"github.com/BlasterM2A/shell-manager/internal/ui/notice"
+	"github.com/BlasterM2A/shell-manager/internal/ui/statustable"
+	"github.com/BlasterM2A/shell-manager/internal/ui/steplist"
+	"github.com/BlasterM2A/shell-manager/internal/ui/styles"
 )
 
 // operation is an Engine call that publishes events and closes the channel.
-type operation func(ctx context.Context, events chan<- shellsetup.Event) (shellsetup.Report, error)
+type operation func(ctx context.Context, events chan<- shellmanager.Event) (shellmanager.Report, error)
 
 // progressResult is what the operation returned.
 type progressResult struct {
-	Report shellsetup.Report
+	Report shellmanager.Report
 	OpErr  error
 }
 
@@ -27,7 +27,7 @@ type progressResult struct {
 // plain lines otherwise. summary renders the final block once op is done.
 // The returned error is a UI failure; op's own error is in OpErr.
 func runWithProgress(ctx context.Context, f *Factory, title string, op operation,
-	summary func(shellsetup.Report, error) string) (progressResult, error) {
+	summary func(shellmanager.Report, error) string) (progressResult, error) {
 	if f.UseTUI() {
 		return runTUI(ctx, f, title, op, summary)
 	}
@@ -35,17 +35,17 @@ func runWithProgress(ctx context.Context, f *Factory, title string, op operation
 }
 
 func runPlain(ctx context.Context, f *Factory, title string, op operation,
-	summary func(shellsetup.Report, error) string) progressResult {
+	summary func(shellmanager.Report, error) string) progressResult {
 	c, out := f.Common(), f.IOStreams.Out
 	_, _ = fmt.Fprintln(out, c.Styles.Title.Render(title))
-	events := make(chan shellsetup.Event)
+	events := make(chan shellmanager.Event)
 	done := make(chan progressResult, 1)
 	go func() {
 		rep, err := op(ctx, events)
 		done <- progressResult{Report: rep, OpErr: err}
 	}()
 	for ev := range events {
-		if p, ok := ev.(shellsetup.PhaseStarted); ok {
+		if p, ok := ev.(shellmanager.PhaseStarted); ok {
 			_, _ = fmt.Fprintln(out, notice.Render(c, notice.Props{Status: styles.StatusInfo, Text: phaseLabel(p.Phase)}))
 			continue
 		}
@@ -62,7 +62,7 @@ func runPlain(ctx context.Context, f *Factory, title string, op operation,
 }
 
 func runTUI(ctx context.Context, f *Factory, title string, op operation,
-	summary func(shellsetup.Report, error) string, opts ...tea.ProgramOption) (progressResult, error) {
+	summary func(shellmanager.Report, error) string, opts ...tea.ProgramOption) (progressResult, error) {
 	sys, err := f.System()
 	if err != nil {
 		return progressResult{}, err
@@ -90,7 +90,7 @@ func runTUI(ctx context.Context, f *Factory, title string, op operation,
 		// Send blocks until the event loop runs, so the terminal is set up
 		// before op can hand it off (or returns once the program is gone).
 		p.Send(tuiStarted{})
-		events := make(chan shellsetup.Event)
+		events := make(chan shellmanager.Event)
 		forwarded := make(chan struct{})
 		go func() {
 			for ev := range events {

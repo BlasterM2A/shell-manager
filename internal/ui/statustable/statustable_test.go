@@ -6,9 +6,9 @@ import (
 	"github.com/charmbracelet/x/exp/golden"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/BlasterM2A/shell-setup/internal/ui/common"
-	"github.com/BlasterM2A/shell-setup/internal/ui/statustable"
-	"github.com/BlasterM2A/shell-setup/internal/ui/styles"
+	"github.com/BlasterM2A/shell-manager/internal/ui/common"
+	"github.com/BlasterM2A/shell-manager/internal/ui/statustable"
+	"github.com/BlasterM2A/shell-manager/internal/ui/styles"
 )
 
 var props = statustable.Props{

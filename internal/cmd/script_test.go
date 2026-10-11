@@ -9,7 +9,7 @@ import (
 
 func TestMain(m *testing.M) {
 	testscript.Main(m, map[string]func(){
-		"shell-setup": func() { os.Exit(Execute()) },
+		"shell-manager": func() { os.Exit(Execute()) },
 	})
 }
 

@@ -9,15 +9,15 @@ linters:
       rules:
         business-logic:
           files:
-            - "**/internal/shellsetup/**"
+            - "**/internal/shellmanager/**"
             - "**/internal/selfupdate/**"
             - "**/internal/config/**"
           deny:
-            - pkg: github.com/BlasterM2A/shell-setup/internal/ui
+            - pkg: github.com/BlasterM2A/shell-manager/internal/ui
               desc: business logic must not depend on the UI
-            - pkg: github.com/BlasterM2A/shell-setup/internal/iostreams
+            - pkg: github.com/BlasterM2A/shell-manager/internal/iostreams
               desc: business logic must not write to the console
-            - pkg: github.com/BlasterM2A/shell-setup/internal/cmd
+            - pkg: github.com/BlasterM2A/shell-manager/internal/cmd
               desc: business logic must not depend on commands
             - pkg: charm.land
               desc: business logic must not depend on UI libraries
@@ -27,9 +27,9 @@ linters:
             - "**/internal/iostreams/**"
             - "**/internal/log/**"
           deny:
-            - pkg: github.com/BlasterM2A/shell-setup/internal/shellsetup
+            - pkg: github.com/BlasterM2A/shell-manager/internal/shellmanager
               desc: the UI must not depend on business logic
-            - pkg: github.com/BlasterM2A/shell-setup/internal/cmd
+            - pkg: github.com/BlasterM2A/shell-manager/internal/cmd
               desc: the UI must not depend on commands
 
 formatters:

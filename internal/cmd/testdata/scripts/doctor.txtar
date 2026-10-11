@@ -1,7 +1,7 @@
 # A fresh HOME has nothing set up: doctor reports it and exits non-zero.
 # Only read-only checks run; development builds skip the release check.
 env HOME=$WORK/home
-! exec shell-setup doctor --plain
+! exec shell-manager doctor --plain
 stdout 'antidote +not installed'
 stdout 'development build'
 ! stdout 'panic'

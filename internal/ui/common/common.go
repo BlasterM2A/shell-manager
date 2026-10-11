@@ -1,7 +1,7 @@
 // Package common carries what every UI component receives.
 package common
 
-import "github.com/BlasterM2A/shell-setup/internal/ui/styles"
+import "github.com/BlasterM2A/shell-manager/internal/ui/styles"
 
 // Common is passed to every component.
 type Common struct {

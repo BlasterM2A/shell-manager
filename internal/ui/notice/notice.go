@@ -2,8 +2,8 @@
 package notice
 
 import (
-	"github.com/BlasterM2A/shell-setup/internal/ui/common"
-	"github.com/BlasterM2A/shell-setup/internal/ui/styles"
+	"github.com/BlasterM2A/shell-manager/internal/ui/common"
+	"github.com/BlasterM2A/shell-manager/internal/ui/styles"
 )
 
 // Props are the inputs of a notice.
