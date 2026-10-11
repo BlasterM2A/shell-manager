@@ -19,11 +19,11 @@ alias l='ls -CF'
 path=("$HOME/.local/bin" $path)
 == /.zsh/env/10-mise.zsh ==
 # managed by shm (tool: mise)
-path=("${XDG_DATA_HOME:-$HOME/.local/share}/mise/shims" $path)
+path=("${MISE_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/mise}/shims" $path)
 == /.zsh/env.zsh ==
 # Managed by shm; changes here are overwritten by `shm update`.
 # Your environment goes in ~/.zsh/env/*.zsh (loaded by every zsh, keep it quiet).
-[[ -n $_SHM_ENV_LOADED ]] && return
+(( ${+_SHM_ENV_LOADED} )) && return
 _SHM_ENV_LOADED=1
 typeset -U path
 for _shm_f in "$HOME"/.zsh/env/*.zsh(N); do source "$_shm_f"; done
@@ -32,9 +32,9 @@ unset _shm_f
 # Managed by shm; changes here are overwritten by `shm update`.
 # Your config goes in ~/.zsh/{env,functions,completions,aliases,local}/
 [[ -o interactive ]] || return
-source "$HOME/.zsh/env.zsh"
+[[ -r "$HOME/.zsh/env.zsh" ]] && source "$HOME/.zsh/env.zsh"
 fpath=("$HOME/.zsh/completions" "$HOME/.zsh/functions" $fpath)
-() { (( $# )) && autoload -Uz "$@" } "$HOME"/.zsh/functions/*(N:t)
+() { (( $# )) && autoload -Uz "$@" } "$HOME"/.zsh/functions/*(N-.:t)
 for _shm_f in "$HOME"/.zsh/{tools,aliases,local}/*.zsh(N); do source "$_shm_f"; done
 unset _shm_f
 == /.zsh/tools/10-mise.zsh ==

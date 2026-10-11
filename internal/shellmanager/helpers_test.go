@@ -96,10 +96,10 @@ func (f *fakeFetcher) Fetch(_ context.Context, url string) ([]byte, error) {
 	return b, nil
 }
 
-// runZsh runs `zsh -c script` non-interactively with a clean environment
-// and HOME set, returning stdout and stderr combined.
-func runZsh(zsh, home, script string) (string, error) {
-	cmd := exec.Command(zsh, "-c", script)
+// runZsh runs `zsh [flags] -c script` non-interactively with a clean
+// environment and HOME set, returning stdout and stderr combined.
+func runZsh(zsh, home, script string, flags ...string) (string, error) {
+	cmd := exec.Command(zsh, append(flags, "-c", script)...)
 	cmd.Env = []string{"HOME=" + home, "PATH=/usr/bin:/bin", "TERM=dumb"}
 	out, err := cmd.CombinedOutput()
 	return string(out), err

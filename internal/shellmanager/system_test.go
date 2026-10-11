@@ -41,6 +41,37 @@ func TestRunPrefersUserBin(t *testing.T) {
 	assert.Equal(t, "from-home\n", string(out))
 }
 
+func TestLookPathFindsMiseShimsHonoringMiseDataDir(t *testing.T) {
+	sys := realSystem(t)
+	home := sys.HomeDir()
+	t.Setenv("MISE_DATA_DIR", "")
+	t.Setenv("XDG_DATA_HOME", "")
+	defaultShim := filepath.Join(home, ".local", "share", "mise", "shims", "a-default")
+	xdgShim := filepath.Join(home, "xdg", "mise", "shims", "a-xdg")
+	miseShim := filepath.Join(home, "mise-data", "shims", "a-mise")
+	for _, p := range []string{defaultShim, xdgShim, miseShim} {
+		writeExecutable(t, p, "exit 0")
+	}
+
+	p, err := sys.LookPath("a-default")
+	require.NoError(t, err)
+	assert.Equal(t, defaultShim, p)
+	_, err = sys.LookPath("a-xdg")
+	require.Error(t, err)
+
+	t.Setenv("XDG_DATA_HOME", filepath.Join(home, "xdg"))
+	p, err = sys.LookPath("a-xdg")
+	require.NoError(t, err)
+	assert.Equal(t, xdgShim, p)
+
+	t.Setenv("MISE_DATA_DIR", filepath.Join(home, "mise-data"))
+	p, err = sys.LookPath("a-mise")
+	require.NoError(t, err)
+	assert.Equal(t, miseShim, p)
+	_, err = sys.LookPath("a-xdg")
+	require.Error(t, err)
+}
+
 func TestRunErrorIncludesOutputTail(t *testing.T) {
 	sys := realSystem(t)
 	writeExecutable(t, filepath.Join(sys.HomeDir(), ".local", "bin", "boom"), "echo exploded", "exit 3")

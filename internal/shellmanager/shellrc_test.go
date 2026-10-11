@@ -226,3 +226,37 @@ func TestNonInteractiveZshGetsThePathSilently(t *testing.T) {
 	require.NoError(t, err, out)
 	assert.Equal(t, "ok\n", out, "no output besides the command's own")
 }
+
+// `zsh -u` (nounset) must not trip over the guard variable.
+func TestNounsetZshGetsThePathSilently(t *testing.T) {
+	zsh, err := lookSystemZsh()
+	if err != nil {
+		t.Skip("zsh not installed")
+	}
+	w := newShellWriter(t)
+	_, err = w.apply(catalogTools(t, w, "mise"), false)
+	require.NoError(t, err)
+	home := w.paths.Home
+	shims := filepath.Join(home, ".local", "share", "mise", "shims")
+	bin := filepath.Join(home, ".local", "bin")
+
+	out, err := runZsh(zsh, home, "print -r -- $PATH", "-u")
+	require.NoError(t, err, out)
+	assert.True(t, strings.HasPrefix(out, shims+":"+bin+":"), "PATH=%q", out)
+	assert.NotContains(t, out, "parameter not set")
+}
+
+// An interactive shell with only shm's own files prints nothing.
+func TestInteractiveZshStartsSilently(t *testing.T) {
+	zsh, err := lookSystemZsh()
+	if err != nil {
+		t.Skip("zsh not installed")
+	}
+	w := newShellWriter(t)
+	_, err = w.apply(nil, false)
+	require.NoError(t, err)
+
+	out, err := runZsh(zsh, w.paths.Home, "print -r -- ok", "-i")
+	require.NoError(t, err, out)
+	assert.Equal(t, "ok\n", out)
+}
