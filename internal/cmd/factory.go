@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"syscall"
 
 	"github.com/hashicorp/go-retryablehttp"
 
@@ -29,11 +30,17 @@ type Factory struct {
 	System  func() (*shellmanager.RealSystem, error)
 	Engine  func() (*shellmanager.Engine, error)
 	Updater func() *selfupdate.Updater
+
+	// Executable is the real path of the running binary; Exec replaces the
+	// process with another program (syscall.Exec in production).
+	Executable func() string
+	Exec       func(path string, args []string) error
 }
 
 // NewFactory returns the production factory.
 func NewFactory(ios *iostreams.IOStreams, home string) *Factory {
-	f := &Factory{IOStreams: ios, Home: home}
+	f := &Factory{IOStreams: ios, Home: home, Executable: executablePath}
+	f.Exec = func(path string, args []string) error { return syscall.Exec(path, args, os.Environ()) }
 	f.Config = sync.OnceValues(func() (config.Config, error) {
 		return config.Load(config.DefaultPath(home), nil)
 	})
