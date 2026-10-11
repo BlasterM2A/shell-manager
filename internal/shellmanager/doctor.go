@@ -37,6 +37,9 @@ func (e *Engine) Doctor(ctx context.Context) (Report, error) {
 		}
 		rep.Checks = append(rep.Checks, c)
 	}
+	for _, path := range slices.Sorted(maps.Keys(state.Blocks)) {
+		rep.Checks = append(rep.Checks, e.blockCheck(path, state.Blocks[path]))
+	}
 	shell := e.loginShell(ctx)
 	sc := CheckResult{Name: "default shell", Status: CheckOK, Detail: shell}
 	if filepath.Base(shell) != "zsh" {
@@ -44,4 +47,24 @@ func (e *Engine) Doctor(ctx context.Context) (Report, error) {
 	}
 	rep.Checks = append(rep.Checks, sc, e.aliasCheck())
 	return rep, nil
+}
+
+// blockCheck is doctor's view of the shm block in path.
+func (e *Engine) blockCheck(path, recorded string) CheckResult {
+	c := CheckResult{Name: path, Status: CheckOK}
+	data, err := e.System.ReadFile(resolveLink(e.System, path))
+	if err != nil {
+		c.Status, c.Detail = CheckWarn, "missing (run shm update)"
+		return c
+	}
+	start, end, found, err := findBlock(data)
+	switch {
+	case err != nil:
+		c.Status, c.Detail = CheckWarn, ErrBrokenMarkers.Error()
+	case !found:
+		c.Status, c.Detail = CheckWarn, "shm block missing (run shm update)"
+	case hashBytes(data[start:end]) != recorded:
+		c.Status, c.Detail = CheckWarn, "shm block modified by hand (update --force overwrites it)"
+	}
+	return c
 }
