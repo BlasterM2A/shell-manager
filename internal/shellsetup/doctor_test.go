@@ -56,17 +56,14 @@ func TestDoctorFlagsModifiedAndMissingManagedFiles(t *testing.T) {
 	assert.Equal(t, CheckOK, checks[filepath.Join(e.Paths.ZshD, "20-core.zsh")].Status)
 }
 
-func TestDoctorWarnsAboutLoginShellAndLegacyBinaries(t *testing.T) {
+func TestDoctorWarnsAboutLoginShell(t *testing.T) {
 	e, rec, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
 	rec.out["getent passwd tester"] = "tester:x:1000:1000::/home/tester:/bin/bash"
-	writeExecutable(t, e.Paths.Legacy[0])
 
 	rep, err := e.Doctor(context.Background())
 	require.NoError(t, err)
 
-	checks := checksByName(rep)
-	assert.Equal(t, CheckWarn, checks["default shell"].Status)
-	assert.Equal(t, CheckWarn, checks[e.Paths.Legacy[0]].Status)
+	assert.Equal(t, CheckWarn, checksByName(rep)["default shell"].Status)
 }
 
 func TestDoctorReportsMiseToolOutsideMiseAsNotInstalled(t *testing.T) {

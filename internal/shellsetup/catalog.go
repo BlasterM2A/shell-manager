@@ -147,6 +147,13 @@ func loadTool(fsys fs.FS, path string) (Tool, error) {
 			return Tool{}, fmt.Errorf("file %s: %w", f.Src, err)
 		}
 	}
+	if t.Legacy != nil {
+		for _, p := range t.Legacy.Paths {
+			if _, err := pathpkg.Match(p, ""); err != nil {
+				return Tool{}, fmt.Errorf("legacy path %q: %w", p, err)
+			}
+		}
+	}
 	return t, nil
 }
 

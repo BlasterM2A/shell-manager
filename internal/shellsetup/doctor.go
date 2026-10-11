@@ -43,11 +43,11 @@ func (e *Engine) Doctor(ctx context.Context) (Report, error) {
 		sc.Status, sc.Detail = CheckWarn, shell+" (run shell-setup init)"
 	}
 	rep.Checks = append(rep.Checks, sc, e.aliasCheck())
-	for _, p := range e.Paths.Legacy {
-		if _, err := e.System.Stat(p); err == nil {
+	for _, t := range e.Catalog.Tools() {
+		for _, it := range e.legacyLeftovers(ctx, t) {
 			rep.Checks = append(rep.Checks, CheckResult{
-				Name: p, Status: CheckWarn,
-				Detail: "installed by the old install.sh; the mise version takes precedence, you can remove it",
+				Name: it.name, Status: CheckWarn,
+				Detail: "left by an older install; run shs update to remove it",
 			})
 		}
 	}

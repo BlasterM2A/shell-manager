@@ -38,6 +38,8 @@ type Report struct {
 	Tools  []ToolReport
 	Files  []FileReport
 	Checks []CheckResult
+	// ShellChanged is set when this run changed the login shell to zsh.
+	ShellChanged bool
 }
 
 // Failed reports whether a required tool failed or a check failed.

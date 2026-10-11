@@ -19,8 +19,6 @@ type Paths struct {
 	LogFile        string
 	TmpDir         string
 	AliasLink      string // ~/.local/bin/shs → shell-setup
-	// Legacy are binaries left by the old install.sh that mise now provides.
-	Legacy []string
 }
 
 // NewPaths returns the paths for a home directory.
@@ -40,11 +38,6 @@ func NewPaths(home string) Paths {
 		LogFile:        filepath.Join(state, "shell-setup.log"),
 		TmpDir:         filepath.Join(state, "tmp"),
 		AliasLink:      filepath.Join(home, ".local", "bin", AliasName),
-		Legacy: []string{
-			filepath.Join(home, ".local", "bin", "starship"),
-			filepath.Join(home, ".local", "bin", "zoxide"),
-			"/usr/bin/fzf",
-		},
 	}
 }
 

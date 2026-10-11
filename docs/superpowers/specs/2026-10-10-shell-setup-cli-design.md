@@ -25,7 +25,7 @@ volver a ejecutar `curl | bash`.
 |---|---|
 | `shell-setup init` | Instala lo que falte, escribe la configuración de shell, cambia el shell por defecto a zsh. No actualiza lo ya instalado. |
 | `shell-setup update` | Igual que `init`, pero además actualiza las herramientas ya instaladas y reescribe la configuración gestionada que haya cambiado. `--force` sobrescribe archivos gestionados editados a mano (con backup). |
-| `shell-setup doctor` | Solo lectura: estado y versión de cada herramienta, archivos gestionados (ok / modified / missing), shell por defecto, binarios antiguos que tapan a los de mise. Sale con código ≠ 0 si falta algo requerido. |
+| `shell-setup doctor` | Solo lectura: estado y versión de cada herramienta, archivos gestionados (ok / modified / missing), shell por defecto, restos de instalaciones antiguas que no se pudieron purgar. Sale con código ≠ 0 si falta algo requerido. |
 | `shell-setup self-update` | Descarga el último release del binario y se reemplaza. Indica ejecutar `shell-setup update` para aplicar la configuración nueva. |
 
 **Fuera de alcance v1** (el diseño lo deja preparado, no se implementa):
@@ -210,6 +210,14 @@ Campos por backend:
 Campo común opcional: `post_install` (lista de comandos, cada uno como array
 de argumentos) que se ejecuta tras `Install` y tras `Update`.
 
+Sección opcional `[legacy]`: lo que instalaciones anteriores dejaron y esta
+herramienta sustituye — `paths` (archivos; admite `~/` y comodines) y `apt`
+(paquetes). Se purga en `init`/`update` solo cuando la herramienta ha
+terminado OK con su backend en esa ejecución (nunca se deja al usuario sin
+la herramienta); los paquetes con `sudo apt-get remove -y`, solo si dpkg
+los da por instalados. Un fallo al purgar es un aviso, no un error; `doctor`
+sigue mostrando el resto hasta que `update` lo consiga.
+
 ### Catálogo v1
 
 | id | kind | backend | optional | depends | system_packages | shell (prioridad) | files |
@@ -251,7 +259,11 @@ manifiesto de mise.
    - Crea `~/.config/zsh/{env,functions,aliases,custom}.d` si no existen; nunca
      toca su contenido.
    - Cambia el shell por defecto a zsh si no lo es (`chsh`, con fallback a
-     `sudo chsh`).
+     `sudo chsh`). El `Report` indica si lo cambió (`ShellChanged`) y el
+     mensaje final se adapta: si cambió, "Run `exec zsh` (or open a new
+     terminal)…; if new terminals still open your old shell, log out and back
+     in" (la mayoría de emuladores leen el shell de login de passwd al abrir
+     ventana); si no, "Run `exec zsh` to load the new configuration".
 4. Devuelve el `Report` (el comando muestra el resumen de doctor).
 
 ### Composición del `.zshrc`
@@ -302,8 +314,8 @@ warn / fail / skip:
 - Shell por defecto es zsh.
 - Alias `shs`: enlace presente y apuntando a shell-setup; ausente, apuntando
   a otro sitio o archivo real → warn.
-- Binarios antiguos que tapan a los de mise: `starship`/`zoxide` en
-  `~/.local/bin` o `fzf` de apt (herencia del `install.sh` anterior) → warn.
+- Restos de instalaciones antiguas (sección `[legacy]` de cada módulo) que
+  siguen presentes → warn ("run shs update to remove it").
 - Versión del binario vs último release (warn si hay una más nueva).
 
 Código de salida: 1 si algún check de una herramienta no opcional es fail.
@@ -480,6 +492,7 @@ Sin red, sin instalaciones reales, sin Docker.
 - **Máquinas existentes:** ejecutar el one-liner una vez. `init` hace backup del
   `~/.zshrc` actual y escribe el stub (primera vez, sin hash en state). Los
   binarios instalados por el script anterior (`~/.local/bin/starship`,
-  `~/.local/bin/zoxide`, `fzf` de apt) no se borran: mise los antecede en
-  `PATH` y `doctor` avisa.
+  `~/.local/bin/zoxide`, `fzf` de apt) y la fuente descomprimida en
+  `~/.local/share/fonts` se purgan automáticamente (sección `[legacy]` de
+  cada módulo) en cuanto la nueva copia está instalada.
 - A partir de ahí: `shell-setup self-update` y `shell-setup update`.
