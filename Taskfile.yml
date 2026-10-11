@@ -14,6 +14,25 @@ tasks:
     cmds:
       - go test ./...
       - bash tests/test_install.sh
+  test:one:
+    desc: "Run tests matching a regex: task test:one -- TestPaths"
+    preconditions:
+      - sh: test {{len .CLI_ARGS}} -gt 0
+        msg: "usage: task test:one -- <regex>"
+    cmds:
+      - go test ./... -count=1 -run {{.CLI_ARGS}}
+  golden:
+    desc: Regenerate the shell config golden file and show the diff
+    cmds:
+      - go test ./internal/shellmanager/ -run TestShellConfigGolden -update
+      - git diff --stat internal/shellmanager/testdata
+  zsh:
+    desc: "Run a zsh snippet in a sandbox HOME built from the golden file: task zsh -- 'print $PATH'"
+    preconditions:
+      - sh: test {{len .CLI_ARGS}} -gt 0
+        msg: "usage: task zsh -- '<script>' (see scripts/zsh-sandbox.sh)"
+    cmds:
+      - scripts/zsh-sandbox.sh {{.CLI_ARGS}}
   lint:
     cmds:
       - golangci-lint run

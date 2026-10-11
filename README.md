@@ -86,6 +86,8 @@ mise install          # Go, Task, goreleaser, golangci-lint
 task test             # Go tests + bootstrap script tests
 task lint             # golangci-lint, including dependency rules (depguard)
 task run -- doctor    # run the CLI from source
+task test:one -- Re   # tests matching a regex; task golden regenerates the zsh golden;
+                      # task zsh -- 'print $PATH' runs zsh in a sandbox HOME (ZSH_FLAGS=-u|-i)
 task snapshot         # local release build into ./dist
 ```
 
