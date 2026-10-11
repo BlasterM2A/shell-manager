@@ -14,9 +14,10 @@ Thumbs.db
 # Backups shell-manager makes when replacing a file (never expected in the repo)
 *.bak.*
 
-# Local Claude Code session/skill settings — personal to this machine,
-# not part of the shell-manager tool itself.
-.claude/
+# Personal Claude Code files (project-scope config under .claude/ is committed)
+.claude/settings.local.json
+.claude/worktrees/
+CLAUDE.local.md
 
 # Go build output
 bin/
