@@ -39,9 +39,9 @@ After the first `setup`:
 | Command | What it does |
 |---|---|
 | `shm setup` | Install what is missing, write the shell config, make zsh the login shell |
-| `shm update` | Same as setup, plus update every installed tool. `--force` overwrites managed files you edited (a backup is kept) |
+| `shm update` | Same as setup, plus update every installed tool. `--force` overwrites managed files you edited (a backup is kept); `--config-only` rewrites just the shell config, installing and updating no tools |
 | `shm doctor` | Check tools, managed files, the shm blocks in `~/.zshenv`/`~/.zshrc` and the login shell; exits non-zero if something required is missing |
-| `shm self-update` | Replace the binary with the latest release, then (in a terminal) offer to run `shm update` with it to apply the new configuration |
+| `shm self-update` | Replace the binary with the latest release and apply its shell config (same as `shm update --config-only` run by the new binary); tools are left alone, `shm update` updates them |
 
 Global flags: `--plain` (no interactive UI), `--verbose`, `--quiet`.
 

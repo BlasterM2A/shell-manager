@@ -67,11 +67,20 @@ func (e *Engine) Update(ctx context.Context, opts UpdateOptions, events chan<- E
 	return e.apply(ctx, modeUpdate, opts.Force, events)
 }
 
+// ApplyConfig rewrites the shell config for the tools already installed. It
+// installs and updates nothing, needs no sudo and leaves the login shell
+// alone: it is what a new shell-manager binary runs to apply its own config
+// templates.
+func (e *Engine) ApplyConfig(ctx context.Context, opts UpdateOptions, events chan<- Event) (Report, error) {
+	return e.apply(ctx, modeConfig, opts.Force, events)
+}
+
 type mode int
 
 const (
 	modeSetup mode = iota
 	modeUpdate
+	modeConfig
 )
 
 func (e *Engine) apply(ctx context.Context, m mode, force bool, events chan<- Event) (rep Report, err error) {
@@ -96,8 +105,10 @@ func (e *Engine) apply(ctx context.Context, m mode, force bool, events chan<- Ev
 		}
 	}()
 	tools := e.Catalog.Tools()
-	if err := e.ensureAptPackages(ctx, aptPackages(tools), m == modeUpdate); err != nil {
-		return rep, fmt.Errorf("installing system packages: %w", err)
+	if m != modeConfig {
+		if err := e.ensureAptPackages(ctx, aptPackages(tools), m == modeUpdate); err != nil {
+			return rep, fmt.Errorf("installing system packages: %w", err)
+		}
 	}
 
 	events <- PhaseStarted{Phase: PhaseTools}
@@ -146,6 +157,9 @@ func (e *Engine) apply(ctx context.Context, m mode, force bool, events chan<- Ev
 			return rep, errors.Join(shellErr, fmt.Errorf("linking %s: %w", AliasName, err))
 		}
 	}
+	if m == modeConfig {
+		return rep, shellErr
+	}
 	if rep.ShellChanged, err = e.ensureDefaultShell(ctx); err != nil {
 		return rep, errors.Join(shellErr, fmt.Errorf("changing the default shell: %w", err))
 	}
@@ -163,6 +177,9 @@ func (e *Engine) applyTool(ctx context.Context, env Env, t Tool, m mode, blocked
 	}
 	st := e.checkTool(ctx, env, t)
 	switch {
+	case !st.Installed && m == modeConfig:
+		tr.Result = ResultSkipped // not ours to install in this mode
+		return tr
 	case !st.Installed:
 		tr.Action = ActionInstall
 	case m == modeUpdate:

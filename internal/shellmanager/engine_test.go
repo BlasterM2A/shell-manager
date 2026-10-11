@@ -362,3 +362,35 @@ func TestNewEngineLoadsEmbeddedCatalog(t *testing.T) {
 	require.NoError(t, err, "the embedded catalog only uses known backends")
 	assert.NotEmpty(t, e.Catalog.Tools())
 }
+
+func applyConfigOp(e *Engine) func(chan<- Event) (Report, error) {
+	return func(ch chan<- Event) (Report, error) {
+		return e.ApplyConfig(context.Background(), UpdateOptions{}, ch)
+	}
+}
+
+// ApplyConfig rewrites the shell config for the tools that are installed,
+// without installing, updating, apt-ing or touching the login shell.
+func TestApplyConfigOnlyRewritesConfig(t *testing.T) {
+	e, rec, backend := newTestEngine(t, map[string]string{
+		"a": fakeTool("a", KindBuiltin, `system_packages = ["git"]`),
+		"b": fakeTool("b", KindPlugin, "[shell]\npriority = 40\nsnippet = 'echo b'\n"),
+	})
+	rec.setFail("a --version", nil) // a is installed, b is not
+	rec.out["getent passwd tester"] = "tester:x:1000:1000::/home/tester:/bin/bash"
+
+	rep, _, err := runOp(t, applyConfigOp(e))
+	require.NoError(t, err)
+
+	assert.Empty(t, backend.calls, "no install or update")
+	for _, c := range rec.commands() {
+		assert.NotContains(t, c, "apt-get")
+		assert.NotContains(t, c, "chsh")
+	}
+	assert.Equal(t, map[string]Result{"a": ResultOK, "b": ResultSkipped}, results(rep))
+	assert.False(t, rep.Failed())
+	assert.False(t, rep.ShellChanged)
+	assert.Contains(t, read(t, e.Paths.Zshrc), blockBegin)
+	assert.FileExists(t, filepath.Join(e.Paths.ZshDir, "init.zsh"))
+	assert.NoFileExists(t, filepath.Join(e.Paths.ZshDir, "tools", "40-b.zsh"), "b is not installed")
+}

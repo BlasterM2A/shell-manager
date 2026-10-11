@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"strings"
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,41 +20,40 @@ func (r *execRecorder) exec(path string, args []string) error {
 	return nil
 }
 
-func offerFor(t *testing.T, tty bool, answer string, plain, verbose, quiet bool) (*execRecorder, string) {
+func applyNewConfigFor(t *testing.T, exe string, plain, verbose, quiet bool) (*execRecorder, string) {
 	t.Helper()
 	f, out := newTestFactory(t)
-	f.IOStreams.In = strings.NewReader(answer)
 	f.Plain, f.Verbose, f.Quiet = plain, verbose, quiet
 	rec := &execRecorder{}
 	f.Exec = rec.exec
-	f.Executable = func() string { return "/bin/shell-manager" }
-	require.NoError(t, offerUpdate(f, tty))
+	f.Executable = func() string { return exe }
+	require.NoError(t, applyNewConfig(f))
 	return rec, out.String()
 }
 
-func TestOfferUpdateRunsUpdateOnYes(t *testing.T) {
-	for _, answer := range []string{"\n", "y\n", "Y\n", "yes\n", ""} {
-		rec, out := offerFor(t, true, answer, false, false, false)
-		assert.Equal(t, "/bin/shell-manager", rec.path, "answer %q", answer)
-		assert.Equal(t, []string{"shell-manager", "update"}, rec.args, "answer %q", answer)
-		assert.Contains(t, out, "[Y/n]")
-	}
+func TestApplyNewConfigRunsTheNewBinaryConfigOnly(t *testing.T) {
+	rec, _ := applyNewConfigFor(t, "/bin/shell-manager", false, false, false)
+	assert.Equal(t, "/bin/shell-manager", rec.path)
+	assert.Equal(t, []string{"shell-manager", "update", "--config-only"}, rec.args)
 }
 
-func TestOfferUpdateSkipsOnNo(t *testing.T) {
-	rec, out := offerFor(t, true, "n\n", false, false, false)
+func TestApplyNewConfigForwardsGlobalFlags(t *testing.T) {
+	rec, _ := applyNewConfigFor(t, "/bin/shell-manager", true, true, true)
+	assert.Equal(t, []string{"shell-manager", "update", "--config-only", "--plain", "--verbose", "--quiet"}, rec.args)
+}
+
+func TestApplyNewConfigWithoutExecutableOnlyHints(t *testing.T) {
+	rec, out := applyNewConfigFor(t, "", false, false, false)
 	assert.Empty(t, rec.path)
-	assert.Contains(t, out, "shm update")
+	assert.Contains(t, out, "shm update --config-only")
 }
 
-func TestOfferUpdateWithoutTerminalOnlyHints(t *testing.T) {
-	rec, out := offerFor(t, false, "\n", false, false, false)
-	assert.Empty(t, rec.path)
-	assert.NotContains(t, out, "[Y/n]")
-	assert.Contains(t, out, "Run `shm update`")
-}
+func TestUpdateConfigOnlyFlag(t *testing.T) {
+	f, _ := newTestFactory(t)
+	var got *UpdateOptions
+	cmd := newUpdateCmd(f, func(_ context.Context, o *UpdateOptions) error { got = o; return nil })
+	cmd.SetArgs([]string{"--config-only"})
 
-func TestOfferUpdateForwardsGlobalFlags(t *testing.T) {
-	rec, _ := offerFor(t, true, "y\n", true, true, true)
-	assert.Equal(t, []string{"shell-manager", "update", "--plain", "--verbose", "--quiet"}, rec.args)
+	require.NoError(t, cmd.Execute())
+	assert.True(t, got.ConfigOnly)
 }
