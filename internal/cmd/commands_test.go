@@ -18,9 +18,9 @@ func TestUpdateForceFlag(t *testing.T) {
 	assert.True(t, got.Force)
 }
 
-func TestInitRejectsArguments(t *testing.T) {
+func TestSetupRejectsArguments(t *testing.T) {
 	f, _ := newTestFactory(t)
-	cmd := newInitCmd(f, func(context.Context, *InitOptions) error { return nil })
+	cmd := newSetupCmd(f, func(context.Context, *SetupOptions) error { return nil })
 	cmd.SetArgs([]string{"extra"})
 	assert.Error(t, cmd.Execute())
 }

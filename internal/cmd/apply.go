@@ -11,7 +11,7 @@ import (
 	"github.com/BlasterM2A/shell-manager/internal/ui/styles"
 )
 
-// runApply runs Init or Update with live progress, then shows doctor.
+// runApply runs Setup or Update with live progress, then shows doctor.
 func runApply(ctx context.Context, f *Factory, e *shellmanager.Engine, title string, op operation) error {
 	var doctor shellmanager.Report
 	summary := func(rep shellmanager.Report, opErr error) string {

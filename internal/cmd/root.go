@@ -45,7 +45,7 @@ func NewRootCmd(f *Factory) *cobra.Command {
 	flags.BoolVarP(&f.Verbose, "verbose", "v", false, "log debug details")
 	flags.BoolVarP(&f.Quiet, "quiet", "q", false, "only log errors")
 	root.AddCommand(
-		newInitCmd(f, nil),
+		newSetupCmd(f, nil),
 		newUpdateCmd(f, nil),
 		newDoctorCmd(f, nil),
 		newSelfUpdateCmd(f, nil),

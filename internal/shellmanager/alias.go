@@ -54,10 +54,10 @@ func (e *Engine) aliasCheck() CheckResult {
 	info, err := e.System.Lstat(link)
 	switch {
 	case err != nil:
-		c.Status, c.Detail = CheckWarn, "missing (run shm init)"
+		c.Status, c.Detail = CheckWarn, "missing (run shm setup)"
 		return c
 	case info.Mode()&fs.ModeSymlink == 0:
-		c.Status, c.Detail = CheckWarn, link+" is not a link to shell-manager; remove it and run shm init"
+		c.Status, c.Detail = CheckWarn, link+" is not a link to shell-manager; remove it and run shm setup"
 		return c
 	}
 	target, err := e.System.Readlink(link)
@@ -67,7 +67,7 @@ func (e *Engine) aliasCheck() CheckResult {
 	}
 	c.Detail = "→ " + target
 	if e.Executable != "" && target != e.aliasTarget() {
-		c.Status, c.Detail = CheckWarn, "points to "+target+" (run shm init)"
+		c.Status, c.Detail = CheckWarn, "points to "+target+" (run shm setup)"
 	}
 	return c
 }

@@ -40,7 +40,7 @@ func TestDoctorReportsTools(t *testing.T) {
 
 func TestDoctorFlagsModifiedAndMissingManagedFiles(t *testing.T) {
 	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
-	_, _, err := runOp(t, initOp(e))
+	_, _, err := runOp(t, setupOp(e))
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(e.Paths.Stub, []byte("hand edit"), 0o644))
 	require.NoError(t, os.Remove(e.Paths.GeneratedZshrc))

@@ -99,8 +99,8 @@ func runOp(t *testing.T, op func(chan<- Event) (Report, error)) (Report, []Event
 	return rep, got, err
 }
 
-func initOp(e *Engine) func(chan<- Event) (Report, error) {
-	return func(ch chan<- Event) (Report, error) { return e.Init(context.Background(), ch) }
+func setupOp(e *Engine) func(chan<- Event) (Report, error) {
+	return func(ch chan<- Event) (Report, error) { return e.Setup(context.Background(), ch) }
 }
 
 func results(rep Report) map[string]Result {
@@ -111,13 +111,13 @@ func results(rep Report) map[string]Result {
 	return m
 }
 
-func TestInitInstallsMissingToolsInDependencyOrder(t *testing.T) {
+func TestSetupInstallsMissingToolsInDependencyOrder(t *testing.T) {
 	e, _, backend := newTestEngine(t, map[string]string{
 		"a": fakeTool("a", KindBuiltin, ""),
 		"b": fakeTool("b", KindPlugin, `depends = ["a"]`),
 	})
 
-	rep, events, err := runOp(t, initOp(e))
+	rep, events, err := runOp(t, setupOp(e))
 	require.NoError(t, err)
 
 	assert.Equal(t, []string{"install a", "install b"}, backend.calls)
@@ -134,16 +134,16 @@ func TestInitInstallsMissingToolsInDependencyOrder(t *testing.T) {
 	assert.FileExists(t, e.Paths.StateFile)
 }
 
-func TestInitIsIdempotent(t *testing.T) {
+func TestSetupIsIdempotent(t *testing.T) {
 	e, rec, backend := newTestEngine(t, map[string]string{
 		"a": fakeTool("a", KindBuiltin, `system_packages = ["git"]`),
 	})
 	rec.out["dpkg-query -W -f=${Status} git"] = "install ok installed"
-	_, _, err := runOp(t, initOp(e))
+	_, _, err := runOp(t, setupOp(e))
 	require.NoError(t, err)
 	before := len(rec.commands())
 
-	rep, _, err := runOp(t, initOp(e))
+	rep, _, err := runOp(t, setupOp(e))
 	require.NoError(t, err)
 
 	assert.Equal(t, []string{"install a"}, backend.calls, "nothing reinstalled")
@@ -161,7 +161,7 @@ func TestInitIsIdempotent(t *testing.T) {
 func TestAptPreflightInstallsMissingPackagesWithSudo(t *testing.T) {
 	e, rec, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, `system_packages = ["git"]`)})
 
-	_, _, err := runOp(t, initOp(e))
+	_, _, err := runOp(t, setupOp(e))
 	require.NoError(t, err)
 
 	assert.Subset(t, rec.commands(), []string{"sudo apt-get update -qq", "sudo apt-get install -y git"})
@@ -171,7 +171,7 @@ func TestAptPreflightWithoutSudoWhenRoot(t *testing.T) {
 	e, rec, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, `system_packages = ["git"]`)})
 	e.Sudo = nil
 
-	_, _, err := runOp(t, initOp(e))
+	_, _, err := runOp(t, setupOp(e))
 	require.NoError(t, err)
 
 	assert.Subset(t, rec.commands(), []string{"apt-get update -qq", "apt-get install -y git"})
@@ -184,7 +184,7 @@ func TestAptFailureAbortsBeforeTools(t *testing.T) {
 	e, rec, backend := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, `system_packages = ["git"]`)})
 	rec.setFail("sudo apt-get update -qq", errExit)
 
-	_, _, err := runOp(t, initOp(e))
+	_, _, err := runOp(t, setupOp(e))
 	assert.ErrorContains(t, err, "installing system packages")
 	assert.Empty(t, backend.calls)
 }
@@ -208,7 +208,7 @@ func TestRequiredFailureSkipsDependentsButNotOthers(t *testing.T) {
 	})
 	backend.failures["a"] = errors.New("boom")
 
-	rep, _, err := runOp(t, initOp(e))
+	rep, _, err := runOp(t, setupOp(e))
 	require.NoError(t, err)
 
 	assert.Equal(t, map[string]Result{"a": ResultFailed, "b": ResultSkipped, "c": ResultOK}, results(rep))
@@ -224,7 +224,7 @@ func TestOptionalFailureIsAWarning(t *testing.T) {
 	e, _, backend := newTestEngine(t, map[string]string{"c": fakeTool("c", KindPlugin, "optional = true")})
 	backend.failures["c"] = errors.New("network down")
 
-	rep, _, err := runOp(t, initOp(e))
+	rep, _, err := runOp(t, setupOp(e))
 	require.NoError(t, err)
 	assert.Equal(t, map[string]Result{"c": ResultWarned}, results(rep))
 	assert.False(t, rep.Failed())
@@ -234,18 +234,18 @@ func TestPostInstallRunsAfterInstall(t *testing.T) {
 	e, rec, _ := newTestEngine(t, map[string]string{
 		"a": fakeTool("a", KindBuiltin, `post_install = [["a", "settings", "set", "x", "true"]]`),
 	})
-	_, _, err := runOp(t, initOp(e))
+	_, _, err := runOp(t, setupOp(e))
 	require.NoError(t, err)
 	assert.Contains(t, rec.commands(), "a settings set x true")
 }
 
-func TestInitFailsWhenLocked(t *testing.T) {
+func TestSetupFailsWhenLocked(t *testing.T) {
 	e, _, backend := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
 	unlock, err := e.System.Lock(e.Paths.LockFile)
 	require.NoError(t, err)
 	defer unlock()
 
-	_, _, err = runOp(t, initOp(e))
+	_, _, err = runOp(t, setupOp(e))
 	assert.ErrorIs(t, err, ErrLocked)
 	assert.Empty(t, backend.calls)
 	assert.NoFileExists(t, e.Paths.Stub)
@@ -255,7 +255,7 @@ func TestUnsupportedOS(t *testing.T) {
 	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
 	require.NoError(t, os.WriteFile(e.OSRelease, []byte("ID=fedora\nPRETTY_NAME=\"Fedora 41\"\n"), 0o644))
 
-	_, _, err := runOp(t, initOp(e))
+	_, _, err := runOp(t, setupOp(e))
 	assert.ErrorContains(t, err, "Debian/Ubuntu")
 }
 
@@ -263,7 +263,7 @@ func TestChangesDefaultShellWhenNotZsh(t *testing.T) {
 	e, rec, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
 	rec.out["getent passwd tester"] = "tester:x:1000:1000::/home/tester:/bin/bash"
 
-	_, _, err := runOp(t, initOp(e))
+	_, _, err := runOp(t, setupOp(e))
 	require.NoError(t, err)
 
 	zsh := filepath.Join(e.Paths.Home, ".local", "bin", "zsh")
@@ -276,7 +276,7 @@ func TestChshFallsBackToSudo(t *testing.T) {
 	zsh := filepath.Join(e.Paths.Home, ".local", "bin", "zsh")
 	rec.setFail("chsh -s "+zsh, errExit)
 
-	_, _, err := runOp(t, initOp(e))
+	_, _, err := runOp(t, setupOp(e))
 	require.NoError(t, err)
 	assert.Contains(t, rec.commands(), "sudo chsh -s "+zsh+" tester")
 }
@@ -294,7 +294,7 @@ func TestCancelDuringLastToolSkipsShellPhase(t *testing.T) {
 	defer cancel()
 	e.Backends["fake"] = cancelingBackend{cancel: cancel}
 
-	_, events, err := runOp(t, func(ch chan<- Event) (Report, error) { return e.Init(ctx, ch) })
+	_, events, err := runOp(t, func(ch chan<- Event) (Report, error) { return e.Setup(ctx, ch) })
 
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.NotContains(t, events, Event(PhaseStarted{Phase: PhaseShell}))
@@ -310,26 +310,26 @@ func miseTool(id string) string {
 		id, id, id)
 }
 
-func TestInitInstallsMiseToolFoundOnlyOutsideMise(t *testing.T) {
+func TestSetupInstallsMiseToolFoundOnlyOutsideMise(t *testing.T) {
 	e, rec, _ := newTestEngine(t, map[string]string{"a": miseTool("a")})
 	e.Backends["mise"] = miseBackend{}
 	rec.setFail("a --version", nil) // e.g. an apt or ~/.local/bin copy
 	rec.setFail("mise which a", errExit)
 	rec.after["mise use -g a@latest"] = func() { rec.setFail("mise which a", nil) }
 
-	rep, _, err := runOp(t, initOp(e))
+	rep, _, err := runOp(t, setupOp(e))
 	require.NoError(t, err)
 
 	assert.Contains(t, rec.commands(), "mise use -g a@latest")
 	assert.Equal(t, map[string]Result{"a": ResultOK}, results(rep))
 }
 
-func TestInitSkipsMiseToolManagedByMise(t *testing.T) {
+func TestSetupSkipsMiseToolManagedByMise(t *testing.T) {
 	e, rec, _ := newTestEngine(t, map[string]string{"a": miseTool("a")})
 	e.Backends["mise"] = miseBackend{}
 	rec.setFail("a --version", nil)
 
-	rep, _, err := runOp(t, initOp(e))
+	rep, _, err := runOp(t, setupOp(e))
 	require.NoError(t, err)
 
 	assert.Contains(t, rec.commands(), "mise which a")

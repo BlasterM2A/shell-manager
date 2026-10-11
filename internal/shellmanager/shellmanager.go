@@ -55,13 +55,13 @@ func NewEngine(sys System, fetcher Fetcher) (*Engine, error) {
 	return e, nil
 }
 
-// Init installs what is missing and writes the shell config. It does not
+// Setup installs what is missing and writes the shell config. It does not
 // update tools that are already installed.
-func (e *Engine) Init(ctx context.Context, events chan<- Event) (Report, error) {
-	return e.apply(ctx, modeInit, false, events)
+func (e *Engine) Setup(ctx context.Context, events chan<- Event) (Report, error) {
+	return e.apply(ctx, modeSetup, false, events)
 }
 
-// Update is Init plus updating every installed tool.
+// Update is Setup plus updating every installed tool.
 func (e *Engine) Update(ctx context.Context, opts UpdateOptions, events chan<- Event) (Report, error) {
 	return e.apply(ctx, modeUpdate, opts.Force, events)
 }
@@ -69,7 +69,7 @@ func (e *Engine) Update(ctx context.Context, opts UpdateOptions, events chan<- E
 type mode int
 
 const (
-	modeInit mode = iota
+	modeSetup mode = iota
 	modeUpdate
 )
 

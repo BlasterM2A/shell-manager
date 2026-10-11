@@ -40,7 +40,7 @@ func (e *Engine) Doctor(ctx context.Context) (Report, error) {
 	shell := e.loginShell(ctx)
 	sc := CheckResult{Name: "default shell", Status: CheckOK, Detail: shell}
 	if filepath.Base(shell) != "zsh" {
-		sc.Status, sc.Detail = CheckWarn, shell+" (run shm init)"
+		sc.Status, sc.Detail = CheckWarn, shell+" (run shm setup)"
 	}
 	rep.Checks = append(rep.Checks, sc, e.aliasCheck())
 	for _, t := range e.Catalog.Tools() {

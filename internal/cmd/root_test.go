@@ -33,7 +33,8 @@ func TestRootRegistersCommands(t *testing.T) {
 	for _, c := range NewRootCmd(f).Commands() {
 		names = append(names, c.Name())
 	}
-	assert.Subset(t, names, []string{"init", "update", "doctor", "self-update"})
+	assert.Subset(t, names, []string{"setup", "update", "doctor", "self-update"})
+	assert.NotContains(t, names, "init")
 }
 
 func TestGlobalFlags(t *testing.T) {

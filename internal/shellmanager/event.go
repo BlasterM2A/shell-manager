@@ -5,7 +5,7 @@ import "errors"
 // ErrDependencyFailed marks a tool skipped because a dependency failed.
 var ErrDependencyFailed = errors.New("dependency failed")
 
-// Phase is a stage of Init/Update.
+// Phase is a stage of Setup/Update.
 type Phase string
 
 const (
