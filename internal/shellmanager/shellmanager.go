@@ -80,14 +80,6 @@ func (e *Engine) apply(ctx context.Context, m mode, force bool, events chan<- Ev
 	if err := e.checkOS(); err != nil {
 		return rep, err
 	}
-	migrated, err := e.migrateFromShellSetup()
-	for _, r := range migrated {
-		events <- FileFinished(r)
-	}
-	rep.Files = append(rep.Files, migrated...)
-	if err != nil {
-		return rep, fmt.Errorf("migrating from shell-setup: %w", err)
-	}
 	unlock, err := e.System.Lock(e.Paths.LockFile)
 	if err != nil {
 		return rep, err
@@ -124,12 +116,6 @@ func (e *Engine) apply(ctx context.Context, m mode, force bool, events chan<- Ev
 			blocked[t.ID] = true
 		}
 	}
-	for _, t := range okTools {
-		for _, r := range e.purgeLegacy(ctx, t) {
-			events <- FileFinished(r)
-			rep.Files = append(rep.Files, r)
-		}
-	}
 
 	if err := ctx.Err(); err != nil {
 		return rep, err
@@ -148,9 +134,6 @@ func (e *Engine) apply(ctx context.Context, m mode, force bool, events chan<- Ev
 	rep.Files = append(rep.Files, files...)
 	if err != nil {
 		return rep, err
-	}
-	if err := e.removeCompatLink(); err != nil {
-		return rep, fmt.Errorf("removing the shell-setup compatibility link: %w", err)
 	}
 	if e.Executable != "" {
 		alias, err := e.ensureAlias()

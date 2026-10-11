@@ -116,10 +116,6 @@ func TestLoadCatalogErrors(t *testing.T) {
 			}),
 			"check needs exactly one of cmd or path",
 		},
-		"empty after_purge command": {
-			testRegistry([]string{"a"}, map[string]string{"a": module("a", "plugin", "") + "[legacy]\nafter_purge = [[]]\n"}),
-			"after_purge",
-		},
 		"empty post_install command": {
 			testRegistry([]string{"a"}, map[string]string{"a": module("a", "plugin", "post_install = [[]]")}),
 			"post_install",

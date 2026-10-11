@@ -24,9 +24,6 @@ type Tool struct {
 	Check       CheckSpec   `toml:"check"`
 	Shell       *ShellSpec  `toml:"shell"`
 	Files       []FileSpec  `toml:"files"`
-	// Legacy is what older installs left behind that this tool replaces;
-	// it is purged once the tool is installed by its own backend.
-	Legacy *LegacySpec `toml:"legacy"`
 }
 
 // InstallSpec selects a backend and its parameters.
@@ -54,14 +51,6 @@ type ShellSpec struct {
 }
 
 // FileSpec is a config file the tool ships, embedded under registry/.
-type LegacySpec struct {
-	Paths []string `toml:"paths"` // files to delete; "~/" and glob patterns allowed
-	Apt   []string `toml:"apt"`   // apt packages to remove
-	// AfterPurge commands run once when at least one leftover was removed
-	// (e.g. refreshing the font cache).
-	AfterPurge [][]string `toml:"after_purge"`
-}
-
 type FileSpec struct {
 	Src  string `toml:"src"`
 	Dest string `toml:"dest"`

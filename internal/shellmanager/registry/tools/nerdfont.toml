@@ -10,12 +10,3 @@ dest = "~/.local/share/fonts/JetBrainsMonoNerdFont"
 
 [check]
 path = "~/.local/share/fonts/JetBrainsMonoNerdFont/JetBrainsMonoNerdFont-Regular.ttf"
-
-# The old install.sh unzipped the font straight into ~/.local/share/fonts.
-[legacy]
-# All JetBrainsMono Nerd Font variants (incl. NL); the new install lives in
-# the JetBrainsMonoNerdFont/ subdirectory, which this pattern does not reach.
-paths = ["~/.local/share/fonts/JetBrainsMono*NerdFont*.ttf"]
-# Refresh the font cache so apps see the removal; running apps (e.g. the
-# terminal) still need to be reopened.
-after_purge = [["fc-cache", "-f"]]

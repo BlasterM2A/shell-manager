@@ -15,7 +15,3 @@ snippet = '''
 eval "$(zoxide init zsh)"
 alias cd="z"
 '''
-
-# The old install.sh put zoxide here; purged once mise provides it.
-[legacy]
-paths = ["~/.local/bin/zoxide"]
