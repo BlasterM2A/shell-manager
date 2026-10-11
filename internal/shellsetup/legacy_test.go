@@ -107,3 +107,24 @@ func TestReportShellChanged(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, rep.ShellChanged)
 }
+
+const legacyWithHook = `
+[legacy]
+paths = ["~/.local/share/fonts/A*.ttf"]
+after_purge = [["fc-cache", "-f"]]
+`
+
+func TestAfterPurgeRunsOnlyWhenSomethingWasRemoved(t *testing.T) {
+	e, rec, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindPlugin, "") + legacyWithHook})
+
+	_, _, err := runOp(t, initOp(e))
+	require.NoError(t, err)
+	assert.NotContains(t, rec.commands(), "fc-cache -f", "nothing removed, no hook")
+
+	fonts := filepath.Join(e.Paths.Home, ".local", "share", "fonts")
+	require.NoError(t, os.MkdirAll(fonts, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(fonts, "A-Regular.ttf"), nil, 0o644))
+	_, _, err = runOp(t, initOp(e))
+	require.NoError(t, err)
+	assert.Contains(t, rec.commands(), "fc-cache -f")
+}

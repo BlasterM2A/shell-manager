@@ -63,7 +63,7 @@ func renderSummary(c common.Common, home, logFile string, rep, doctor shellsetup
 		b.WriteString("\n")
 		b.WriteString(notice.Render(c, notice.Props{
 			Status: styles.StatusInfo,
-			Text:   "Select 'JetBrainsMono Nerd Font' in your terminal's font settings.",
+			Text:   "Reopen your terminal (all windows), then select 'JetBrainsMono Nerd Font' in its font settings.",
 		}))
 	}
 	b.WriteString("\n")

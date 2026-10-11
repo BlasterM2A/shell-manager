@@ -57,6 +57,9 @@ type ShellSpec struct {
 type LegacySpec struct {
 	Paths []string `toml:"paths"` // files to delete; "~/" and glob patterns allowed
 	Apt   []string `toml:"apt"`   // apt packages to remove
+	// AfterPurge commands run once when at least one leftover was removed
+	// (e.g. refreshing the font cache).
+	AfterPurge [][]string `toml:"after_purge"`
 }
 
 type FileSpec struct {
