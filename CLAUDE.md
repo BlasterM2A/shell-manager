@@ -49,6 +49,32 @@ migration.
   `repoSlug` default in `internal/cmd/root.go`; update all three if the repo
   moves.
 
+## Agent tooling
+
+- Files: Read, then Edit/Write. Never edit with `python3 - <<EOF` / `sed -i`
+  scripts (they fail silently or with `substring not found`); don't read with
+  `sed -n` and then fall back to python — Edit requires a prior Read.
+- Search with `rg -n pattern -g '*.go'` or `git grep -n pattern -- '*.go'`.
+  `rg`, `jq`, `go`, `task`, `golangci-lint`, `zsh` exist; `yq`, `fd` don't;
+  awk is mawk (no `gensub`).
+- The Bash tool runs zsh: quote every glob (`--include='*.go'`, `'*.toml'`), an
+  unmatched one aborts the whole line; don't `echo ===` (EQUALS option), use
+  `echo '---'`.
+- Run everything from the repo root with paths. Never `cd` into
+  `internal/shellmanager/registry/tools/`: its `mise.toml` manifests are read as
+  mise config and the shims (python3, jq, task, golangci-lint) fail "not trusted".
+- One logical step per command; don't chain unrelated steps with `;` (failures
+  get hidden). Use `&&` only for dependent steps.
+- Targets: `task test:one -- <regex>` (focused test), `task golden` (regenerate
+  `testdata/TestShellConfigGolden.golden`; review `git diff
+  internal/shellmanager/testdata`), `task zsh -- '<script>'` (run a snippet
+  against the golden zsh config in a throwaway HOME; `ZSH_FLAGS=-u`/`-i`).
+- Done = `task test && task lint` (lint already includes gofmt).
+- Controllers dispatching subagents: give reviewers `git diff --stat A..B` and
+  have them read per file (`git diff A..B -- <file>`), never one giant `.diff`
+  file (Read caps at 25k tokens); batch fixes in groups of 3-4 findings; repeat
+  the Read/Edit rule in every dispatch prompt.
+
 ## Making changes
 
 Design changes: update the spec first, then the code. Adding a tool is a new
