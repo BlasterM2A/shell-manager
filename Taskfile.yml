@@ -14,6 +14,7 @@ tasks:
     cmds:
       - go test ./...
       - bash tests/test_install.sh
+      - bash tests/test_guard_home.sh
   lint:
     cmds:
       - golangci-lint run
