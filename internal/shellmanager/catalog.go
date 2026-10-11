@@ -139,8 +139,8 @@ func loadTool(fsys fs.FS, path string) (Tool, error) {
 			return Tool{}, errors.New("post_install contains an empty command")
 		}
 	}
-	if t.Shell != nil && (t.Shell.Priority < 1 || t.Shell.Priority > 89 || t.Shell.Snippet == "") {
-		return Tool{}, errors.New("shell needs a priority in 1..89 and a snippet")
+	if t.Shell != nil && (t.Shell.Priority < 1 || t.Shell.Priority > 89 || (t.Shell.Env == "" && t.Shell.Snippet == "")) {
+		return Tool{}, errors.New("shell needs a priority in 1..89 and an env or a snippet")
 	}
 	for _, f := range t.Files {
 		if _, err := fs.Stat(fsys, f.Src); err != nil {

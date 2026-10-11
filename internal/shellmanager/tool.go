@@ -44,9 +44,12 @@ type CheckSpec struct {
 	Path string   `toml:"path"` // installed if it exists; version comes from state
 }
 
-// ShellSpec is the tool's fragment of the zsh config.
+// ShellSpec is the tool's part of the zsh config: Env goes to
+// ~/.zsh/env/NN-<id>.zsh (every zsh, interactive or not; must print
+// nothing) and Snippet to ~/.zsh/tools/NN-<id>.zsh (interactive only).
 type ShellSpec struct {
-	Priority int    `toml:"priority"` // 1..89, sets the load order in zsh.d
+	Priority int    `toml:"priority"` // 1..89, the NN load-order prefix
+	Env      string `toml:"env"`
 	Snippet  string `toml:"snippet"`
 }
 

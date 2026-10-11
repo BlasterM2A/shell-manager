@@ -120,6 +120,10 @@ func TestLoadCatalogErrors(t *testing.T) {
 			testRegistry([]string{"a"}, map[string]string{"a": module("a", "plugin", "post_install = [[]]")}),
 			"post_install",
 		},
+		"shell without env or snippet": {
+			testRegistry([]string{"a"}, map[string]string{"a": module("a", "plugin", "") + "[shell]\npriority = 10\n"}),
+			"shell needs a priority in 1..89 and an env or a snippet",
+		},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -127,6 +131,15 @@ func TestLoadCatalogErrors(t *testing.T) {
 			assert.ErrorContains(t, err, tc.want)
 		})
 	}
+}
+
+func TestShellEnvOnlyIsValid(t *testing.T) {
+	cat, err := LoadCatalog(testRegistry([]string{"a"}, map[string]string{
+		"a": module("a", "plugin", "") + "[shell]\npriority = 10\nenv = 'export A=1'\n",
+	}))
+	require.NoError(t, err)
+	a, _ := cat.Get("a")
+	assert.Equal(t, "export A=1", a.Shell.Env)
 }
 
 func TestValidateModulesChecksModulesOutsideTheCatalog(t *testing.T) {
