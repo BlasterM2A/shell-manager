@@ -128,7 +128,7 @@ skip_global_compinit=1
 ```zsh
 # Managed by shm; changes here are overwritten by `shm update`.
 # Your environment goes in ~/.zsh/env/*.zsh (loaded by every zsh, keep it quiet).
-[[ -n $_SHM_ENV_LOADED ]] && return
+(( ${+_SHM_ENV_LOADED} )) && return
 _SHM_ENV_LOADED=1
 typeset -U path
 for _shm_f in "$HOME"/.zsh/env/*.zsh(N); do source "$_shm_f"; done
@@ -147,9 +147,9 @@ duplicados en shells anidadas.
 # Managed by shm; changes here are overwritten by `shm update`.
 # Your config goes in ~/.zsh/{env,functions,completions,aliases,local}/
 [[ -o interactive ]] || return
-source "$HOME/.zsh/env.zsh"
+[[ -r "$HOME/.zsh/env.zsh" ]] && source "$HOME/.zsh/env.zsh"
 fpath=("$HOME/.zsh/completions" "$HOME/.zsh/functions" $fpath)
-() { (( $# )) && autoload -Uz "$@" } "$HOME"/.zsh/functions/*(N:t)
+() { (( $# )) && autoload -Uz "$@" } "$HOME"/.zsh/functions/*(N-.:t)
 for _shm_f in "$HOME"/.zsh/{tools,aliases,local}/*.zsh(N); do source "$_shm_f"; done
 unset _shm_f
 ```
@@ -177,8 +177,10 @@ como modificación.
 | Bloque editado a mano (hash ≠ registrado) | Lo deja (`modified`); con `--force`, backup del archivo y lo reescribe. |
 | Marcadores rotos (falta uno, duplicados, fin antes de inicio) | No toca el archivo; error claro. |
 
-`doctor` añade un check por bloque: `ok`, `missing (run shm update)`,
-`modified by hand (update --force overwrites it)` o `broken markers`.
+`doctor` añade un check por bloque y siempre revisa `~/.zshenv` y `~/.zshrc`
+(además de los bloques registrados), aunque `state.toml` no los registre:
+`ok`, `missing (run shm update)`, `modified by hand (update --force overwrites it)`
+o `broken markers`. Sin registro, un bloque presente cuenta como `ok`.
 
 ### Archivos completos
 
@@ -207,7 +209,7 @@ Al menos uno de `env`/`snippet` debe estar presente. `priority` (1..89) da el
 
 | Módulo | Cambio |
 |---|---|
-| mise | `env = 'path=("${XDG_DATA_HOME:-$HOME/.local/share}/mise/shims" $path)'`; `snippet` sigue con `mise activate zsh`. |
+| mise | `env = 'path=("${MISE_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/mise}/shims" $path)'`; `snippet` sigue con `mise activate zsh`. |
 | antidote | `snippet`: `source ~/.antidote/antidote.zsh` + `antidote load`; `files.dest = "~/.zsh_plugins.txt"`. |
 | starship | Guarda `[[ $TERM == dumb ]] && return` antes de `starship init`. |
 | fzf | Solo si `[[ -t 0 && $TERM != dumb ]]`. |
