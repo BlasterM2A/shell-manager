@@ -113,6 +113,36 @@ func TestDoctorReportsShmBlocks(t *testing.T) {
 	assert.Contains(t, checks[e.Paths.Zshrc].Detail, "broken")
 }
 
+func TestDoctorChecksBothBlocksWithoutState(t *testing.T) {
+	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
+
+	checks := checksByName(mustDoctor(t, e))
+	for _, p := range []string{e.Paths.Zshenv, e.Paths.Zshrc} {
+		assert.Equal(t, CheckWarn, checks[p].Status, p)
+		assert.Contains(t, checks[p].Detail, "missing", p)
+	}
+
+	require.NoError(t, os.WriteFile(e.Paths.Zshrc, []byte(blockBegin+"\n"), 0o644))
+	checks = checksByName(mustDoctor(t, e))
+	assert.Equal(t, CheckWarn, checks[e.Paths.Zshrc].Status)
+	assert.Contains(t, checks[e.Paths.Zshrc].Detail, "broken")
+
+	require.NoError(t, os.WriteFile(e.Paths.Zshrc, []byte("export FOO=1\n"), 0o644))
+	checks = checksByName(mustDoctor(t, e))
+	assert.Contains(t, checks[e.Paths.Zshrc].Detail, "shm block missing")
+}
+
+func TestDoctorAcceptsAnUnrecordedBlock(t *testing.T) {
+	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
+	_, _, err := runOp(t, setupOp(e))
+	require.NoError(t, err)
+	require.NoError(t, os.Remove(e.Paths.StateFile)) // state lost
+
+	checks := checksByName(mustDoctor(t, e))
+	assert.Equal(t, CheckOK, checks[e.Paths.Zshrc].Status)
+	assert.Equal(t, CheckOK, checks[e.Paths.Zshenv].Status)
+}
+
 func mustDoctor(t *testing.T, e *Engine) Report {
 	t.Helper()
 	rep, err := e.Doctor(context.Background())

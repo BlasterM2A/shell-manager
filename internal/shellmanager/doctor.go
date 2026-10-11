@@ -37,7 +37,7 @@ func (e *Engine) Doctor(ctx context.Context) (Report, error) {
 		}
 		rep.Checks = append(rep.Checks, c)
 	}
-	for _, path := range slices.Sorted(maps.Keys(state.Blocks)) {
+	for _, path := range e.blockPaths(state) {
 		rep.Checks = append(rep.Checks, e.blockCheck(path, state.Blocks[path]))
 	}
 	shell := e.loginShell(ctx)
@@ -49,7 +49,22 @@ func (e *Engine) Doctor(ctx context.Context) (Report, error) {
 	return rep, nil
 }
 
-// blockCheck is doctor's view of the shm block in path.
+// blockPaths lists the files whose shm block doctor checks: ~/.zshenv and
+// ~/.zshrc always (state may be lost or never recorded them), then any other
+// recorded path, without duplicates.
+func (e *Engine) blockPaths(state *State) []string {
+	paths := []string{e.Paths.Zshenv, e.Paths.Zshrc}
+	for _, p := range slices.Sorted(maps.Keys(state.Blocks)) {
+		if !slices.Contains(paths, p) {
+			paths = append(paths, p)
+		}
+	}
+	return paths
+}
+
+// blockCheck is doctor's view of the shm block in path. recorded is the hash
+// shm stored for it, empty when there is no record: a block that is present
+// then counts as ok (shm wrote it, or the next update adopts it).
 func (e *Engine) blockCheck(path, recorded string) CheckResult {
 	c := CheckResult{Name: path, Status: CheckOK}
 	data, err := e.System.ReadFile(resolveLink(e.System, path))
@@ -63,7 +78,7 @@ func (e *Engine) blockCheck(path, recorded string) CheckResult {
 		c.Status, c.Detail = CheckWarn, ErrBrokenMarkers.Error()
 	case !found:
 		c.Status, c.Detail = CheckWarn, "shm block missing (run shm update)"
-	case hashBytes(data[start:end]) != recorded:
+	case recorded != "" && hashBytes(data[start:end]) != recorded:
 		c.Status, c.Detail = CheckWarn, "shm block modified by hand (update --force overwrites it)"
 	}
 	return c

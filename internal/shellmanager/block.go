@@ -103,7 +103,9 @@ func (w fileWriter) writeBlock(path string, block []byte, force bool) (Result, e
 }
 
 // resolveLink follows path's symlinks (at most 40, like the kernel) and
-// returns the final target; path itself if it is not a link or is broken.
+// returns the final target. A dangling link yields its (missing) target, so
+// writeBlock creates the target and the link survives; path itself is
+// returned when it is not a link.
 func resolveLink(sys System, path string) string {
 	for range 40 {
 		info, err := sys.Lstat(path)
