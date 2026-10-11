@@ -60,6 +60,11 @@ func (w fileWriter) writeBlock(path string, block []byte, force bool) (Result, e
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return ResultFailed, err
 	}
+	// Keep the file's own permissions (a 0600 ~/.zshrc must not become 0644).
+	perm := fs.FileMode(0o644)
+	if info, err := w.sys.Stat(target); err == nil {
+		perm = info.Mode().Perm()
+	}
 	start, end, found, err := findBlock(current)
 	if err != nil {
 		return ResultFailed, fmt.Errorf("%s: %w", path, err)
@@ -77,20 +82,20 @@ func (w fileWriter) writeBlock(path string, block []byte, force bool) (Result, e
 			return ResultOK, nil
 		}
 		if !managed || edited {
-			if err := w.sys.WriteFile(w.backupPath(path), current, 0o644); err != nil {
+			if err := w.sys.WriteFile(w.backupPath(path), current, perm); err != nil {
 				return ResultFailed, err
 			}
 		}
 		next = slices.Concat(current[:start], block, current[end:])
 	case len(bytes.TrimSpace(current)) > 0:
-		if err := w.sys.WriteFile(w.backupPath(path), current, 0o644); err != nil {
+		if err := w.sys.WriteFile(w.backupPath(path), current, perm); err != nil {
 			return ResultFailed, err
 		}
 		next = slices.Concat(block, []byte("\n"), current)
 	default:
 		next = block
 	}
-	if err := w.sys.WriteFile(target, next, 0o644); err != nil {
+	if err := w.sys.WriteFile(target, next, perm); err != nil {
 		return ResultFailed, err
 	}
 	w.state.Blocks[path] = hashBytes(block)

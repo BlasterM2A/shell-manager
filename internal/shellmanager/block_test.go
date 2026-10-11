@@ -174,3 +174,17 @@ func TestWriteBlockWritesThroughSymlink(t *testing.T) {
 	assert.Equal(t, testBlock+"\n# from dotfiles\n", read(t, target))
 	assert.Equal(t, hashBytes([]byte(testBlock)), w.state.Blocks[path], "state is keyed by the link path")
 }
+
+func TestWriteBlockKeepsFilePermissions(t *testing.T) {
+	w, path := newWriter(t)
+	require.NoError(t, os.WriteFile(path, []byte("export TOKEN=secret\n"), 0o600))
+
+	_, err := w.writeBlock(path, []byte(testBlock), false)
+	require.NoError(t, err)
+
+	for _, p := range []string{path, path + backupSuffix} {
+		info, err := os.Stat(p)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), p)
+	}
+}
