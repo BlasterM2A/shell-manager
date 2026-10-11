@@ -1,6 +1,7 @@
 package shellmanager
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"path/filepath"
@@ -9,12 +10,17 @@ import (
 )
 
 var (
-	profileFragments = []string{"20-core.zsh", "70-aliases.zsh"}
-	userZshDirs      = []string{"env.d", "functions.d", "aliases.d", "custom.d"}
+	// zshDirs are created under ~/.zsh so the user sees where things go.
+	zshDirs = []string{"env", "functions", "completions", "tools", "aliases", "local"}
+	// shellProfile are shm's own files under ~/.zsh (from registry/files/zsh/).
+	shellProfile = []string{"env.zsh", "init.zsh", "env/00-path.zsh", "tools/20-core.zsh", "aliases/00-base.zsh"}
+	// fragmentDirs get one generated fragment per tool: env (every zsh) and
+	// tools (interactive only).
+	fragmentDirs = []string{"env", "tools"}
 )
 
-// shellWriter writes the managed zsh config: the ~/.zshrc stub, the
-// generated zshrc, profile fragments and one zsh.d fragment per tool.
+// shellWriter writes the managed zsh config: the shm blocks in ~/.zshenv
+// and ~/.zshrc, shm's files under ~/.zsh and one fragment per tool.
 type shellWriter struct {
 	sys     System
 	catalog *Catalog
@@ -23,9 +29,11 @@ type shellWriter struct {
 }
 
 // apply writes the config for okTools (the tools that ended OK this run).
+// The blocks go last: a block that can't be written (broken markers) fails
+// on its own without stopping the rest.
 func (w shellWriter) apply(okTools []Tool, force bool) ([]FileReport, error) {
-	for _, d := range userZshDirs {
-		if err := w.sys.MkdirAll(filepath.Join(w.paths.UserZshDir, d), 0o755); err != nil {
+	for _, d := range zshDirs {
+		if err := w.sys.MkdirAll(filepath.Join(w.paths.ZshDir, d), 0o755); err != nil {
 			return nil, err
 		}
 	}
@@ -52,7 +60,22 @@ func (w shellWriter) apply(okTools []Tool, force bool) ([]FileReport, error) {
 		}
 		reports = append(reports, FileReport{Path: path, Result: res})
 	}
-	return reports, nil
+	var errs []error
+	for _, b := range []struct{ path, src string }{
+		{w.paths.Zshenv, "files/zsh/zshenv-block"},
+		{w.paths.Zshrc, "files/zsh/zshrc-block"},
+	} {
+		block, err := w.catalog.File(b.src)
+		if err != nil {
+			return reports, err
+		}
+		res, err := w.files.writeBlock(b.path, block, force)
+		reports = append(reports, FileReport{Path: b.path, Result: res})
+		if err != nil {
+			errs = append(errs, fmt.Errorf("writing the shm block: %w", err))
+		}
+	}
+	return reports, errors.Join(errs...)
 }
 
 func (w shellWriter) desired(okTools []Tool) (map[string][]byte, error) {
@@ -65,22 +88,20 @@ func (w shellWriter) desired(okTools []Tool) (map[string][]byte, error) {
 		desired[dest] = data
 		return nil
 	}
-	if err := embed(w.paths.Stub, "files/profile/zshrc-stub"); err != nil {
-		return nil, err
-	}
-	if err := embed(w.paths.GeneratedZshrc, "files/profile/zshrc"); err != nil {
-		return nil, err
-	}
-	for _, name := range profileFragments {
-		if err := embed(filepath.Join(w.paths.ZshD, name), "files/profile/"+name); err != nil {
+	for _, name := range shellProfile {
+		if err := embed(filepath.Join(w.paths.ZshDir, name), "files/zsh/"+name); err != nil {
 			return nil, err
 		}
 	}
 	for _, t := range okTools {
 		if t.Shell != nil {
 			name := fmt.Sprintf("%02d-%s.zsh", t.Shell.Priority, t.ID)
-			desired[filepath.Join(w.paths.ZshD, name)] = []byte(
-				fmt.Sprintf("# managed by shell-manager (tool: %s)\n%s\n", t.ID, strings.TrimRight(t.Shell.Snippet, "\n")))
+			if t.Shell.Env != "" {
+				desired[filepath.Join(w.paths.ZshDir, "env", name)] = fragment(t.ID, t.Shell.Env)
+			}
+			if t.Shell.Snippet != "" {
+				desired[filepath.Join(w.paths.ZshDir, "tools", name)] = fragment(t.ID, t.Shell.Snippet)
+			}
 		}
 		for _, f := range t.Files {
 			if err := embed(w.paths.Expand(f.Dest), f.Src); err != nil {
@@ -91,36 +112,41 @@ func (w shellWriter) desired(okTools []Tool) (map[string][]byte, error) {
 	return desired, nil
 }
 
-// orphans are managed zsh.d fragments of tools no longer in the catalog.
-// Fragments of catalog tools that failed this run are kept as they were.
+func fragment(id, body string) []byte {
+	return fmt.Appendf(nil, "# managed by shm (tool: %s)\n%s\n", id, strings.TrimRight(body, "\n"))
+}
+
+// orphans are managed fragments in env/ and tools/ of tools no longer in
+// the catalog. Fragments of catalog tools that failed this run are kept.
 func (w shellWriter) orphans(desired map[string][]byte, okTools []Tool) ([]string, error) {
-	existing, err := w.sys.Glob(filepath.Join(w.paths.ZshD, "*.zsh"))
-	if err != nil {
-		return nil, err
-	}
 	ok := map[string]bool{}
 	for _, t := range okTools {
 		ok[t.ID] = true
 	}
 	var out []string
-	for _, path := range existing {
-		if _, wanted := desired[path]; wanted {
-			continue
+	for _, dir := range fragmentDirs {
+		existing, err := w.sys.Glob(filepath.Join(w.paths.ZshDir, dir, "*.zsh"))
+		if err != nil {
+			return nil, err
 		}
-		if _, managed := w.files.state.Files[path]; !managed {
-			continue
+		for _, path := range existing {
+			if _, wanted := desired[path]; wanted {
+				continue
+			}
+			if _, managed := w.files.state.Files[path]; !managed {
+				continue
+			}
+			if rel, err := filepath.Rel(w.paths.ZshDir, path); err == nil && slices.Contains(shellProfile, rel) {
+				continue
+			}
+			_, id, _ := strings.Cut(strings.TrimSuffix(filepath.Base(path), ".zsh"), "-")
+			// OK tools have exactly the fragments in desired, so any other
+			// managed fragment of theirs is stale.
+			if _, inCatalog := w.catalog.Get(id); inCatalog && !ok[id] {
+				continue
+			}
+			out = append(out, path)
 		}
-		name := filepath.Base(path)
-		if slices.Contains(profileFragments, name) {
-			continue
-		}
-		_, id, _ := strings.Cut(strings.TrimSuffix(name, ".zsh"), "-")
-		// OK tools have exactly the fragments in desired, so any other
-		// managed fragment of theirs is stale.
-		if _, inCatalog := w.catalog.Get(id); inCatalog && !ok[id] {
-			continue
-		}
-		out = append(out, path)
 	}
 	return out, nil
 }

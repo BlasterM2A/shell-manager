@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -42,18 +43,20 @@ func TestDoctorFlagsModifiedAndMissingManagedFiles(t *testing.T) {
 	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
 	_, _, err := runOp(t, setupOp(e))
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(e.Paths.Stub, []byte("hand edit"), 0o644))
-	require.NoError(t, os.Remove(e.Paths.GeneratedZshrc))
+	initZsh := filepath.Join(e.Paths.ZshDir, "init.zsh")
+	envZsh := filepath.Join(e.Paths.ZshDir, "env.zsh")
+	require.NoError(t, os.WriteFile(initZsh, []byte("hand edit"), 0o644))
+	require.NoError(t, os.Remove(envZsh))
 
 	rep, err := e.Doctor(context.Background())
 	require.NoError(t, err)
 
 	checks := checksByName(rep)
-	assert.Equal(t, CheckWarn, checks[e.Paths.Stub].Status)
-	assert.Contains(t, checks[e.Paths.Stub].Detail, "modified")
-	assert.Equal(t, CheckWarn, checks[e.Paths.GeneratedZshrc].Status)
-	assert.Contains(t, checks[e.Paths.GeneratedZshrc].Detail, "missing")
-	assert.Equal(t, CheckOK, checks[filepath.Join(e.Paths.ZshD, "20-core.zsh")].Status)
+	assert.Equal(t, CheckWarn, checks[initZsh].Status)
+	assert.Contains(t, checks[initZsh].Detail, "modified")
+	assert.Equal(t, CheckWarn, checks[envZsh].Status)
+	assert.Contains(t, checks[envZsh].Detail, "missing")
+	assert.Equal(t, CheckOK, checks[filepath.Join(e.Paths.ZshDir, "tools", "20-core.zsh")].Status)
 }
 
 func TestDoctorWarnsAboutLoginShell(t *testing.T) {
@@ -84,4 +87,65 @@ func TestDoctorDoesNotWrite(t *testing.T) {
 	require.NoError(t, err)
 	assert.NoFileExists(t, e.Paths.StateFile)
 	assert.NoFileExists(t, e.Paths.LockFile)
+}
+
+func TestDoctorReportsShmBlocks(t *testing.T) {
+	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
+	_, _, err := runOp(t, setupOp(e))
+	require.NoError(t, err)
+
+	checks := checksByName(mustDoctor(t, e))
+	assert.Equal(t, CheckOK, checks[e.Paths.Zshrc].Status)
+	assert.Equal(t, CheckOK, checks[e.Paths.Zshenv].Status)
+
+	require.NoError(t, os.WriteFile(e.Paths.Zshrc, []byte("export FOO=1\n"), 0o644)) // block deleted
+	zshenv := read(t, e.Paths.Zshenv)
+	require.NoError(t, os.WriteFile(e.Paths.Zshenv, []byte(strings.Replace(zshenv, "skip_global_compinit=1", "X=1", 1)), 0o644))
+	checks = checksByName(mustDoctor(t, e))
+	assert.Equal(t, CheckWarn, checks[e.Paths.Zshrc].Status)
+	assert.Contains(t, checks[e.Paths.Zshrc].Detail, "missing")
+	assert.Equal(t, CheckWarn, checks[e.Paths.Zshenv].Status)
+	assert.Contains(t, checks[e.Paths.Zshenv].Detail, "modified")
+
+	require.NoError(t, os.WriteFile(e.Paths.Zshrc, []byte(blockBegin+"\n"), 0o644))
+	checks = checksByName(mustDoctor(t, e))
+	assert.Equal(t, CheckWarn, checks[e.Paths.Zshrc].Status)
+	assert.Contains(t, checks[e.Paths.Zshrc].Detail, "broken")
+}
+
+func TestDoctorChecksBothBlocksWithoutState(t *testing.T) {
+	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
+
+	checks := checksByName(mustDoctor(t, e))
+	for _, p := range []string{e.Paths.Zshenv, e.Paths.Zshrc} {
+		assert.Equal(t, CheckWarn, checks[p].Status, p)
+		assert.Contains(t, checks[p].Detail, "missing", p)
+	}
+
+	require.NoError(t, os.WriteFile(e.Paths.Zshrc, []byte(blockBegin+"\n"), 0o644))
+	checks = checksByName(mustDoctor(t, e))
+	assert.Equal(t, CheckWarn, checks[e.Paths.Zshrc].Status)
+	assert.Contains(t, checks[e.Paths.Zshrc].Detail, "broken")
+
+	require.NoError(t, os.WriteFile(e.Paths.Zshrc, []byte("export FOO=1\n"), 0o644))
+	checks = checksByName(mustDoctor(t, e))
+	assert.Contains(t, checks[e.Paths.Zshrc].Detail, "shm block missing")
+}
+
+func TestDoctorAcceptsAnUnrecordedBlock(t *testing.T) {
+	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
+	_, _, err := runOp(t, setupOp(e))
+	require.NoError(t, err)
+	require.NoError(t, os.Remove(e.Paths.StateFile)) // state lost
+
+	checks := checksByName(mustDoctor(t, e))
+	assert.Equal(t, CheckOK, checks[e.Paths.Zshrc].Status)
+	assert.Equal(t, CheckOK, checks[e.Paths.Zshenv].Status)
+}
+
+func mustDoctor(t *testing.T, e *Engine) Report {
+	t.Helper()
+	rep, err := e.Doctor(context.Background())
+	require.NoError(t, err)
+	return rep
 }

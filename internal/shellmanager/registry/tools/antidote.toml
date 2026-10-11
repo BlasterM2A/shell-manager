@@ -15,9 +15,9 @@ path = "~/.antidote/antidote.zsh"
 priority = 30
 snippet = '''
 source "$HOME/.antidote/antidote.zsh"
-antidote load "$HOME/.config/shell-manager/plugins.txt"
+antidote load
 '''
 
 [[files]]
 src = "files/antidote/plugins.txt"
-dest = "~/.config/shell-manager/plugins.txt"
+dest = "~/.zsh_plugins.txt"

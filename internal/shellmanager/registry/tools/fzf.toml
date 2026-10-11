@@ -11,8 +11,4 @@ cmd = ["fzf", "--version"]
 
 [shell]
 priority = 60
-snippet = 'fzf --zsh >/dev/null 2>&1 && source <(fzf --zsh)'
-
-# The old install.sh installed fzf from apt (too old for `fzf --zsh`).
-[legacy]
-apt = ["fzf"]
+snippet = '[[ -t 0 && $TERM != dumb ]] && fzf --zsh >/dev/null 2>&1 && source <(fzf --zsh)'

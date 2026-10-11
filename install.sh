@@ -7,11 +7,11 @@ set -euo pipefail
 
 REPO="BlasterM2A/shell-manager"
 BIN_DIR="${SHELL_MANAGER_BIN_DIR:-$HOME/.local/bin}"
-STATE_DIR="${SHELL_MANAGER_STATE_DIR:-$HOME/.local/state/shell-manager}"
+SHM_DIR="${SHM_DIR:-$HOME/.shm}"
 OS_RELEASE="${SHELL_MANAGER_OS_RELEASE:-/etc/os-release}"
 RELEASE_BASE="${SHELL_MANAGER_RELEASE_BASE:-https://github.com/$REPO/releases/latest/download}"
 TTY="${SHELL_MANAGER_TTY:-/dev/tty}"
-STAMP_FILE="$STATE_DIR/bootstrap.sha256"
+STAMP_FILE="$SHM_DIR/bootstrap.sha256"
 
 log() { printf '\033[1;34m•\033[0m %s\n' "$1"; }
 die() {
@@ -57,7 +57,7 @@ install_binary() {
     (cd "$tmp" && printf '%s\n' "$expected" | sha256sum -c --status) ||
         { rm -rf "$tmp"; die "Checksum verification failed for $asset"; }
     tar -xzf "$tmp/$asset" -C "$tmp" shell-manager
-    mkdir -p "$BIN_DIR" "$STATE_DIR"
+    mkdir -p "$BIN_DIR" "$SHM_DIR"
     install -m 0755 "$tmp/shell-manager" "$BIN_DIR/shell-manager"
     printf '%s\n' "$expected" > "$STAMP_FILE"
     rm -rf "$tmp"

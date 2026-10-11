@@ -116,13 +116,13 @@ func TestLoadCatalogErrors(t *testing.T) {
 			}),
 			"check needs exactly one of cmd or path",
 		},
-		"empty after_purge command": {
-			testRegistry([]string{"a"}, map[string]string{"a": module("a", "plugin", "") + "[legacy]\nafter_purge = [[]]\n"}),
-			"after_purge",
-		},
 		"empty post_install command": {
 			testRegistry([]string{"a"}, map[string]string{"a": module("a", "plugin", "post_install = [[]]")}),
 			"post_install",
+		},
+		"shell without env or snippet": {
+			testRegistry([]string{"a"}, map[string]string{"a": module("a", "plugin", "") + "[shell]\npriority = 10\n"}),
+			"shell needs a priority in 1..89 and an env or a snippet",
 		},
 	}
 	for name, tc := range cases {
@@ -131,6 +131,15 @@ func TestLoadCatalogErrors(t *testing.T) {
 			assert.ErrorContains(t, err, tc.want)
 		})
 	}
+}
+
+func TestShellEnvOnlyIsValid(t *testing.T) {
+	cat, err := LoadCatalog(testRegistry([]string{"a"}, map[string]string{
+		"a": module("a", "plugin", "") + "[shell]\npriority = 10\nenv = 'export A=1'\n",
+	}))
+	require.NoError(t, err)
+	a, _ := cat.Get("a")
+	assert.Equal(t, "export A=1", a.Shell.Env)
 }
 
 func TestValidateModulesChecksModulesOutsideTheCatalog(t *testing.T) {
@@ -159,7 +168,11 @@ func TestEmbeddedCatalogIsValid(t *testing.T) {
 	cat, err := DefaultCatalog()
 	require.NoError(t, err)
 	require.NotEmpty(t, cat.Tools())
-	for _, src := range []string{"files/profile/zshrc", "files/profile/zshrc-stub", "files/profile/20-core.zsh", "files/profile/70-aliases.zsh"} {
+	srcs := []string{"files/zsh/zshenv-block", "files/zsh/zshrc-block"}
+	for _, name := range shellProfile {
+		srcs = append(srcs, "files/zsh/"+name)
+	}
+	for _, src := range srcs {
 		_, err := cat.File(src)
 		assert.NoError(t, err, src)
 	}

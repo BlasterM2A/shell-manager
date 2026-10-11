@@ -16,7 +16,7 @@ const backupSuffix = ".bak.20261010120000"
 
 func newWriter(t *testing.T) (fileWriter, string) {
 	sys, _ := newTestSystem(t)
-	st := &State{Files: map[string]string{}, Versions: map[string]string{}}
+	st := &State{Files: map[string]string{}, Blocks: map[string]string{}, Versions: map[string]string{}}
 	return fileWriter{sys: sys, state: st, now: func() time.Time { return fixedNow }},
 		filepath.Join(sys.HomeDir(), ".zshrc")
 }

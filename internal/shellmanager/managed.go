@@ -34,11 +34,16 @@ func (w fileWriter) write(path string, content []byte, force bool) (Result, erro
 		return ResultOK, nil
 	}
 	if !managed || edited {
-		if err := w.sys.Rename(path, path+".bak."+w.now().Format("20060102150405")); err != nil {
+		if err := w.sys.Rename(path, w.backupPath(path)); err != nil {
 			return ResultFailed, err
 		}
 	}
 	return w.put(path, content)
+}
+
+// backupPath is where a file is saved before shell-manager replaces it.
+func (w fileWriter) backupPath(path string) string {
+	return path + ".bak." + w.now().Format("20060102150405")
 }
 
 func (w fileWriter) put(path string, content []byte) (Result, error) {

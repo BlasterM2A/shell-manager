@@ -6,9 +6,11 @@ Nerd Font, AI CLIs). Distributed as a GitHub Release binary; `install.sh`
 downloads it, links `shm` and asks whether to run `shm setup`.
 See `README.md` for usage. Design: base spec
 `docs/superpowers/specs/2026-10-10-shell-setup-cli-design.md` (written under
-the old name) plus `docs/superpowers/specs/2026-10-11-shell-manager-redesign-design.md`,
-which overrides names, the `setup` command, the installer prompt and the
-shell-setup migration.
+the old name), `docs/superpowers/specs/2026-10-11-shell-manager-redesign-design.md`
+(names, the `setup` command, the installer prompt) and
+`docs/superpowers/specs/2026-10-11-shm-layout-design.md`, which overrides
+paths (`~/.shm`, `~/.zsh/`, blocks in `~/.zshenv`/`~/.zshrc`) and removes all
+migration.
 
 ## Repo layout
 
@@ -18,12 +20,12 @@ shell-setup migration.
 - `internal/shellmanager` — the whole domain in one package (chezmoi-style):
   `Engine` (`Setup`, `Update`, `Doctor`), tool manifests + catalog, backends
   (`apt`, `mise`, `script`, `archive`, `font`), zsh config composition,
-  managed files + state, legacy purge, migration from shell-setup. All I/O
+  managed files + state, shm blocks in user dotfiles. All I/O
   goes through the `System` interface.
 - `internal/shellmanager/registry/` (embedded) — `tools/<id>.toml` is one
   module (manifest) per tool; `catalog.toml` lists the ids that are
   installed — the only place that decides inclusion. `files/` holds the
-  config files modules ship and the zsh profile.
+  config files modules ship and shm's zsh files (`files/zsh/`).
 - `internal/ui` — components (`steplist`, `statustable`, `notice`, `model`).
   `internal/ui/styles` is the ONLY place that defines colors/icons.
 - `internal/iostreams`, `internal/log`, `internal/config`, `internal/selfupdate`.

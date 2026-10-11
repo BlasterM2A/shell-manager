@@ -1,0 +1,5 @@
+# >>> shm >>>
+# Managed by shm; changes inside this block are overwritten. Config: ~/.zsh/
+skip_global_compinit=1
+[[ -r "$HOME/.zsh/env.zsh" ]] && source "$HOME/.zsh/env.zsh"
+# <<< shm <<<

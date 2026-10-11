@@ -17,7 +17,7 @@ func newShellWriter(t *testing.T) shellWriter {
 	sys, _ := newTestSystem(t)
 	cat, err := DefaultCatalog()
 	require.NoError(t, err)
-	st := &State{Files: map[string]string{}, Versions: map[string]string{}}
+	st := &State{Files: map[string]string{}, Blocks: map[string]string{}, Versions: map[string]string{}}
 	return shellWriter{
 		sys:     sys,
 		catalog: cat,
@@ -37,46 +37,78 @@ func catalogTools(t *testing.T, w shellWriter, ids ...string) []Tool {
 	return tools
 }
 
-func zshdNames(t *testing.T, w shellWriter) []string {
+func names(t *testing.T, dir string) []string {
 	t.Helper()
-	paths, err := filepath.Glob(filepath.Join(w.paths.ZshD, "*.zsh"))
+	paths, err := filepath.Glob(filepath.Join(dir, "*.zsh"))
 	require.NoError(t, err)
-	names := make([]string, len(paths))
+	out := make([]string, len(paths))
 	for i, p := range paths {
-		names[i] = filepath.Base(p)
+		out[i] = filepath.Base(p)
 	}
-	return names
+	return out
 }
 
-func TestApplyWritesProfileAndFragments(t *testing.T) {
+// zshFiles are every generated zsh file: the two dotfiles, then ~/.zsh/**.zsh.
+func zshFiles(t *testing.T, w shellWriter) []string {
+	t.Helper()
+	files := []string{w.paths.Zshenv, w.paths.Zshrc}
+	err := filepath.WalkDir(w.paths.ZshDir, func(p string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() && strings.HasSuffix(p, ".zsh") {
+			files = append(files, p)
+		}
+		return err
+	})
+	require.NoError(t, err)
+	return files
+}
+
+func TestApplyWritesZshLayout(t *testing.T) {
 	w := newShellWriter(t)
 
 	reports, err := w.apply(catalogTools(t, w, "mise", "starship", "zoxide"), false)
 	require.NoError(t, err)
 
-	assert.Equal(t, []string{"10-mise.zsh", "20-core.zsh", "50-starship.zsh", "60-zoxide.zsh", "70-aliases.zsh"}, zshdNames(t, w))
-	assert.Equal(t, "# managed by shell-manager (tool: zoxide)\neval \"$(zoxide init zsh)\"\nalias cd=\"z\"\n",
-		read(t, filepath.Join(w.paths.ZshD, "60-zoxide.zsh")))
-	assert.Contains(t, read(t, w.paths.Stub), `source "$HOME/.config/shell-manager/zshrc"`)
+	zsh := w.paths.ZshDir
+	assert.Equal(t, []string{"00-path.zsh", "10-mise.zsh"}, names(t, filepath.Join(zsh, "env")))
+	assert.Equal(t, []string{"10-mise.zsh", "20-core.zsh", "50-starship.zsh", "60-zoxide.zsh"}, names(t, filepath.Join(zsh, "tools")))
+	assert.Equal(t, []string{"00-base.zsh"}, names(t, filepath.Join(zsh, "aliases")))
+	assert.Equal(t, "# managed by shm (tool: zoxide)\neval \"$(zoxide init zsh)\"\n",
+		read(t, filepath.Join(zsh, "tools", "60-zoxide.zsh")))
+	assert.FileExists(t, filepath.Join(zsh, "env.zsh"))
+	assert.FileExists(t, filepath.Join(zsh, "init.zsh"))
+	assert.Contains(t, read(t, w.paths.Zshrc), `source "$HOME/.zsh/init.zsh"`)
+	assert.Contains(t, read(t, w.paths.Zshenv), "skip_global_compinit=1")
 	assert.FileExists(t, filepath.Join(w.paths.Home, ".config", "starship.toml"))
-	for _, d := range []string{"env.d", "functions.d", "aliases.d", "custom.d"} {
-		assert.DirExists(t, filepath.Join(w.paths.UserZshDir, d))
+	for _, d := range []string{"env", "functions", "completions", "tools", "aliases", "local"} {
+		assert.DirExists(t, filepath.Join(zsh, d))
 	}
-	assert.Len(t, reports, 8) // stub, zshrc, 5 fragments, starship.toml
+	assert.NoDirExists(t, filepath.Join(w.paths.Home, ".config", "shell-manager"))
+	assert.NoDirExists(t, filepath.Join(w.paths.Home, ".config", "zsh"))
+	// 5 shm files + env/10-mise + 3 tool fragments + starship.toml + 2 blocks
+	assert.Len(t, reports, 12)
 	for _, r := range reports {
 		assert.Equal(t, ResultOK, r.Result, r.Path)
 	}
 }
 
-func TestApplyBacksUpUnmanagedZshrc(t *testing.T) {
+func TestApplyWritesAntidotePluginsAtItsDefaultPath(t *testing.T) {
 	w := newShellWriter(t)
-	require.NoError(t, os.WriteFile(w.paths.Stub, []byte("# my old zshrc\n"), 0o644))
+	_, err := w.apply(catalogTools(t, w, "antidote"), false)
+	require.NoError(t, err)
+	assert.FileExists(t, filepath.Join(w.paths.Home, ".zsh_plugins.txt"))
+}
+
+func TestApplyKeepsUserZshrcBelowTheBlock(t *testing.T) {
+	w := newShellWriter(t)
+	require.NoError(t, os.WriteFile(w.paths.Zshrc, []byte("export NVM_DIR=x\n"), 0o644))
 
 	_, err := w.apply(nil, false)
 	require.NoError(t, err)
 
-	assert.Equal(t, "# my old zshrc\n", read(t, w.paths.Stub+backupSuffix))
-	assert.Contains(t, read(t, w.paths.Stub), "managed by shell-manager")
+	got := read(t, w.paths.Zshrc)
+	assert.True(t, strings.HasPrefix(got, blockBegin+"\n"), got)
+	assert.True(t, strings.HasSuffix(got, "\nexport NVM_DIR=x\n"), got)
+	assert.Equal(t, "export NVM_DIR=x\n", read(t, w.paths.Zshrc+backupSuffix))
 }
 
 func TestApplyTwiceIsIdempotent(t *testing.T) {
@@ -90,17 +122,19 @@ func TestApplyTwiceIsIdempotent(t *testing.T) {
 	for _, r := range reports {
 		assert.Equal(t, ResultOK, r.Result, r.Path)
 	}
-	backups, err := filepath.Glob(filepath.Join(w.paths.Home, "*.bak.*"))
+	backups, err := filepath.Glob(filepath.Join(w.paths.Home, ".*.bak.*"))
 	require.NoError(t, err)
 	assert.Empty(t, backups)
 }
 
 func TestApplyRemovesOnlyFragmentsOfRemovedTools(t *testing.T) {
 	w := newShellWriter(t)
-	gone := filepath.Join(w.paths.ZshD, "42-gone.zsh")       // managed, tool no longer in catalog
-	failed := filepath.Join(w.paths.ZshD, "50-starship.zsh") // managed, tool failed this run
-	mine := filepath.Join(w.paths.ZshD, "99-mine.zsh")       // not managed
-	for _, p := range []string{gone, failed} {
+	tools := filepath.Join(w.paths.ZshDir, "tools")
+	gone := filepath.Join(tools, "42-gone.zsh")                    // managed, tool no longer in catalog
+	goneEnv := filepath.Join(w.paths.ZshDir, "env", "42-gone.zsh") // same, env part
+	failed := filepath.Join(tools, "50-starship.zsh")              // managed, tool failed this run
+	mine := filepath.Join(tools, "99-mine.zsh")                    // not managed
+	for _, p := range []string{gone, goneEnv, failed} {
 		_, err := w.files.write(p, []byte("# old\n"), false)
 		require.NoError(t, err)
 	}
@@ -110,6 +144,7 @@ func TestApplyRemovesOnlyFragmentsOfRemovedTools(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NoFileExists(t, gone)
+	assert.NoFileExists(t, goneEnv)
 	assert.FileExists(t, failed)
 	assert.FileExists(t, mine)
 	assert.Contains(t, reports, FileReport{Path: gone, Result: ResultOK})
@@ -117,7 +152,7 @@ func TestApplyRemovesOnlyFragmentsOfRemovedTools(t *testing.T) {
 
 func TestApplyRemovesStaleFragmentOfOKTool(t *testing.T) {
 	w := newShellWriter(t)
-	stale := filepath.Join(w.paths.ZshD, "60-starship.zsh") // starship is priority 50 in the catalog
+	stale := filepath.Join(w.paths.ZshDir, "tools", "60-starship.zsh") // starship is priority 50 in the catalog
 	_, err := w.files.write(stale, []byte("# old\n"), false)
 	require.NoError(t, err)
 
@@ -125,7 +160,21 @@ func TestApplyRemovesStaleFragmentOfOKTool(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NoFileExists(t, stale)
-	assert.FileExists(t, filepath.Join(w.paths.ZshD, "50-starship.zsh"))
+	assert.FileExists(t, filepath.Join(w.paths.ZshDir, "tools", "50-starship.zsh"))
+}
+
+func TestApplyBrokenZshrcMarkersStillWritesTheRest(t *testing.T) {
+	w := newShellWriter(t)
+	broken := blockBegin + "\n# half a block\n"
+	require.NoError(t, os.WriteFile(w.paths.Zshrc, []byte(broken), 0o644))
+
+	reports, err := w.apply(nil, false)
+
+	assert.ErrorIs(t, err, ErrBrokenMarkers)
+	assert.Equal(t, broken, read(t, w.paths.Zshrc))
+	assert.FileExists(t, filepath.Join(w.paths.ZshDir, "init.zsh"))
+	assert.Contains(t, read(t, w.paths.Zshenv), blockBegin)
+	assert.Contains(t, reports, FileReport{Path: w.paths.Zshrc, Result: ResultFailed})
 }
 
 func TestShellConfigGolden(t *testing.T) {
@@ -134,8 +183,7 @@ func TestShellConfigGolden(t *testing.T) {
 	require.NoError(t, err)
 
 	var b strings.Builder
-	files := append([]string{w.paths.Stub, w.paths.GeneratedZshrc}, globAll(t, w.paths.ZshD)...)
-	for _, p := range files {
+	for _, p := range zshFiles(t, w) {
 		b.WriteString("== " + strings.TrimPrefix(p, w.paths.Home) + " ==\n")
 		b.WriteString(read(t, p))
 	}
@@ -143,22 +191,72 @@ func TestShellConfigGolden(t *testing.T) {
 }
 
 func TestShellConfigIsValidZsh(t *testing.T) {
-	path, err := lookSystemZsh()
+	zsh, err := lookSystemZsh()
 	if err != nil {
 		t.Skip("zsh not installed")
 	}
 	w := newShellWriter(t)
 	_, err = w.apply(catalogTools(t, w, "mise", "antidote", "starship", "fzf", "zoxide"), false)
 	require.NoError(t, err)
-	for _, p := range append([]string{w.paths.Stub, w.paths.GeneratedZshrc}, globAll(t, w.paths.ZshD)...) {
-		out, err := runZshSyntaxCheck(path, p)
+	for _, p := range zshFiles(t, w) {
+		out, err := runZshSyntaxCheck(zsh, p)
 		assert.NoError(t, err, "%s: %s", p, out)
 	}
 }
 
-func globAll(t *testing.T, dir string) []string {
-	t.Helper()
-	paths, err := filepath.Glob(filepath.Join(dir, "*.zsh"))
+// Agents and scripts run `zsh -c`, which reads only ~/.zshenv.
+func TestNonInteractiveZshGetsThePathSilently(t *testing.T) {
+	zsh, err := lookSystemZsh()
+	if err != nil {
+		t.Skip("zsh not installed")
+	}
+	w := newShellWriter(t)
+	_, err = w.apply(catalogTools(t, w, "mise"), false)
 	require.NoError(t, err)
-	return paths
+	home := w.paths.Home
+	shims := filepath.Join(home, ".local", "share", "mise", "shims")
+	bin := filepath.Join(home, ".local", "bin")
+
+	out, err := runZsh(zsh, home, "print -r -- $PATH")
+	require.NoError(t, err, out)
+	assert.True(t, strings.HasPrefix(out, shims+":"+bin+":"), "PATH=%q", out)
+
+	require.NoError(t, os.RemoveAll(w.paths.ZshDir))
+	out, err = runZsh(zsh, home, "print -r -- ok")
+	require.NoError(t, err, out)
+	assert.Equal(t, "ok\n", out, "no output besides the command's own")
+}
+
+// `zsh -u` (nounset) must not trip over the guard variable.
+func TestNounsetZshGetsThePathSilently(t *testing.T) {
+	zsh, err := lookSystemZsh()
+	if err != nil {
+		t.Skip("zsh not installed")
+	}
+	w := newShellWriter(t)
+	_, err = w.apply(catalogTools(t, w, "mise"), false)
+	require.NoError(t, err)
+	home := w.paths.Home
+	shims := filepath.Join(home, ".local", "share", "mise", "shims")
+	bin := filepath.Join(home, ".local", "bin")
+
+	out, err := runZsh(zsh, home, "print -r -- $PATH", "-u")
+	require.NoError(t, err, out)
+	assert.True(t, strings.HasPrefix(out, shims+":"+bin+":"), "PATH=%q", out)
+	assert.NotContains(t, out, "parameter not set")
+}
+
+// An interactive shell with only shm's own files prints nothing.
+func TestInteractiveZshStartsSilently(t *testing.T) {
+	zsh, err := lookSystemZsh()
+	if err != nil {
+		t.Skip("zsh not installed")
+	}
+	w := newShellWriter(t)
+	_, err = w.apply(nil, false)
+	require.NoError(t, err)
+
+	out, err := runZsh(zsh, w.paths.Home, "print -r -- ok", "-i")
+	require.NoError(t, err, out)
+	assert.Equal(t, "ok\n", out)
 }

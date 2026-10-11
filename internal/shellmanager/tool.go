@@ -24,9 +24,6 @@ type Tool struct {
 	Check       CheckSpec   `toml:"check"`
 	Shell       *ShellSpec  `toml:"shell"`
 	Files       []FileSpec  `toml:"files"`
-	// Legacy is what older installs left behind that this tool replaces;
-	// it is purged once the tool is installed by its own backend.
-	Legacy *LegacySpec `toml:"legacy"`
 }
 
 // InstallSpec selects a backend and its parameters.
@@ -47,21 +44,16 @@ type CheckSpec struct {
 	Path string   `toml:"path"` // installed if it exists; version comes from state
 }
 
-// ShellSpec is the tool's fragment of the zsh config.
+// ShellSpec is the tool's part of the zsh config: Env goes to
+// ~/.zsh/env/NN-<id>.zsh (every zsh, interactive or not; must print
+// nothing) and Snippet to ~/.zsh/tools/NN-<id>.zsh (interactive only).
 type ShellSpec struct {
-	Priority int    `toml:"priority"` // 1..89, sets the load order in zsh.d
+	Priority int    `toml:"priority"` // 1..89, the NN load-order prefix
+	Env      string `toml:"env"`
 	Snippet  string `toml:"snippet"`
 }
 
 // FileSpec is a config file the tool ships, embedded under registry/.
-type LegacySpec struct {
-	Paths []string `toml:"paths"` // files to delete; "~/" and glob patterns allowed
-	Apt   []string `toml:"apt"`   // apt packages to remove
-	// AfterPurge commands run once when at least one leftover was removed
-	// (e.g. refreshing the font cache).
-	AfterPurge [][]string `toml:"after_purge"`
-}
-
 type FileSpec struct {
 	Src  string `toml:"src"`
 	Dest string `toml:"dest"`

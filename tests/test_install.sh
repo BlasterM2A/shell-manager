@@ -39,7 +39,7 @@ chmod +x "$FAKE_BIN/curl" "$FAKE_BIN/uname"
 export PATH="$FAKE_BIN:$PATH"
 
 export SHELL_MANAGER_BIN_DIR="$TMP/bin"
-export SHELL_MANAGER_STATE_DIR="$TMP/state"
+export SHM_DIR="$TMP/shm"
 export SHELL_MANAGER_RELEASE_BASE="https://example.invalid/download"
 export SHELL_MANAGER_OS_RELEASE="$TMP/os-release"
 export SHELL_MANAGER_TTY="$TMP/no-tty" # default: no terminal
@@ -86,6 +86,7 @@ printf 'ID=ubuntu\nID_LIKE=debian\n' > "$SHELL_MANAGER_OS_RELEASE"
 # --- install_binary ---
 assert_true "installs the binary" bash -c "source '$INSTALL_SH'; install_binary amd64" >/dev/null
 assert_eq "fake-shell-manager --version" "$("$SHELL_MANAGER_BIN_DIR/shell-manager" --version)" "installed binary runs"
+assert_true "the stamp is written to SHM_DIR" test -f "$SHM_DIR/bootstrap.sha256"
 second="$(bash -c "source '$INSTALL_SH'; install_binary amd64")"
 assert_true "re-run skips the download" grep -q "already up to date" <<<"$second"
 
@@ -125,7 +126,7 @@ assert_false "no terminal does not ask" grep -q "\[Y/n\]" <<<"$out"
 assert_true "no terminal prints the hint" grep -q "whenever you're ready" <<<"$out"
 
 # A corrupted checksum must abort and leave no new binary behind.
-rm -f "$SHELL_MANAGER_BIN_DIR/shell-manager" "$SHELL_MANAGER_STATE_DIR/bootstrap.sha256"
+rm -f "$SHELL_MANAGER_BIN_DIR/shell-manager" "$SHM_DIR/bootstrap.sha256"
 sed -i "s/^[0-9a-f]*/$(printf '0%.0s' $(seq 64))/" "$FAKE_RELEASE_DIR/checksums.txt"
 assert_false "bad checksum aborts" bash -c "source '$INSTALL_SH'; install_binary amd64" 2>/dev/null
 assert_false "no binary after a bad checksum" test -e "$SHELL_MANAGER_BIN_DIR/shell-manager"

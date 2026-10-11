@@ -29,7 +29,7 @@ type Config struct {
 
 // DefaultPath is where the config file lives.
 func DefaultPath(home string) string {
-	return filepath.Join(home, ".config", "shell-manager", "config.toml")
+	return filepath.Join(home, ".shm", "config.toml")
 }
 
 // Load merges defaults, the file at path (optional), SHELL_MANAGER_* env vars

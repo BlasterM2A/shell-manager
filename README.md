@@ -34,36 +34,13 @@ After the first `setup`:
    keeps the font list it loaded at start), then select **JetBrainsMono Nerd
    Font** in its font settings.
 
-## Migrating
-
-**From shell-setup (v0.1.x):** run the install one-liner once and answer
-"Y". `shm setup` moves `~/.config/shell-setup` and `~/.local/state/shell-setup`
-to their `shell-manager` names, rewrites `~/.zshrc` to point at them and removes
-`~/.local/bin/shell-setup` and the `shs` alias. Your configuration and the
-record of what you edited by hand are kept. If anything can't be moved,
-`shm doctor` lists it under "shell-setup leftovers".
-
-**From the original install.sh script:**
-
-- Your old `~/.zshrc` is backed up to `~/.zshrc.bak.<timestamp>` and replaced
-  by a one-line stub. Move your personal lines into `~/.config/zsh/*.d`
-  (see [Where things live](#where-things-live)).
-- starship, zoxide and fzf are reinstalled via mise, and the Nerd Font moves
-  to `~/.local/share/fonts/JetBrainsMonoNerdFont`. Once each new copy is in
-  place, the old one is removed automatically (`~/.local/bin/starship`,
-  `~/.local/bin/zoxide`, apt's `fzf` — which asks for sudo — and the old
-  `JetBrainsMono*NerdFont*.ttf` files in `~/.local/share/fonts`, after which
-  the font cache is refreshed). Reopen your terminal afterwards: one that was
-  already running can show the old fonts as empty boxes. If a removal fails,
-  `shm doctor` lists the leftover and `shm update` retries it.
-
 ## Commands
 
 | Command | What it does |
 |---|---|
 | `shm setup` | Install what is missing, write the shell config, make zsh the login shell |
 | `shm update` | Same as setup, plus update every installed tool. `--force` overwrites managed files you edited (a backup is kept) |
-| `shm doctor` | Check tools, managed files and the login shell; exits non-zero if something required is missing |
+| `shm doctor` | Check tools, managed files, the shm blocks in `~/.zshenv`/`~/.zshrc` and the login shell; exits non-zero if something required is missing |
 | `shm self-update` | Replace the binary with the latest release; then run `shm update` |
 
 Global flags: `--plain` (no interactive UI), `--verbose`, `--quiet`.
@@ -76,17 +53,31 @@ never replaced.
 
 | Path | Owner |
 |---|---|
-| `~/.config/zsh/{env,functions,aliases,custom}.d/*.zsh` | **You.** Auto-loaded, never touched by shell-manager |
-| `~/.zshrc` | shell-manager (a one-line stub) |
-| `~/.local/bin/shell-manager`, `~/.local/bin/shm` | shell-manager (binary and alias link) |
-| `~/.config/shell-manager/zshrc`, `zsh.d/`, `plugins.txt` | shell-manager (generated) |
-| `~/.config/starship.toml` | shell-manager |
-| `~/.config/shell-manager/config.toml` | You (optional: `log_level`) |
-| `~/.local/state/shell-manager/` | shell-manager (state, log) |
+| `~/.local/bin/shell-manager`, `~/.local/bin/shm` | shm (binary and alias link) |
+| `~/.shm/` | shm: `state.toml`, `shm.log`, `bootstrap.sha256`, lock, tmp; `config.toml` is yours (optional: `log_level`) |
+| `~/.zshenv`, `~/.zshrc` | **You.** shm only keeps its block between `# >>> shm >>>` and `# <<< shm <<<` at the top |
+| `~/.zsh/` | Your zsh config, auto-discovered (below). shm owns only the files it wrote |
+| `~/.zsh_plugins.txt` | antidote plugin list (shm) |
+| `~/.config/starship.toml` | starship config (shm) |
 
-If you edit a file shell-manager manages, `update` leaves it alone and
+`~/.zsh/` is loaded in this order; inside each directory, files load
+alphabetically (use an `NN-` prefix to order them). Add or remove a file and
+open a new shell; nothing else to edit.
+
+| Directory | What goes there | Loaded by |
+|---|---|---|
+| `env/*.zsh` | Environment variables and `path` (`00-path.zsh` and tool env fragments, e.g. mise shims, are shm's) | every zsh, including scripts and AI agents (`~/.zshenv`); keep it fast and silent |
+| `functions/` | One function per file, file name = function name (autoloaded) | interactive shells |
+| `completions/` | Completion functions (`_mycmd`) | interactive shells (on `fpath` before `compinit`) |
+| `tools/*.zsh` | Tool setup: one `NN-<tool>.zsh` per tool (shm) | interactive shells |
+| `aliases/*.zsh` | Aliases (`00-base.zsh` is shm's) | interactive shells |
+| `local/*.zsh` | Anything else; loads last of `~/.zsh/`, so it can override the rest (lines you put in `~/.zshrc` below the shm block load after it) | interactive shells |
+
+If you edit a file or block shm manages, `update` leaves it alone and
 `doctor` reports it as modified; `update --force` replaces it after a backup
-(`<file>.bak.<timestamp>`). Put personal config in `~/.config/zsh/*.d` instead.
+(`<file>.bak.<timestamp>`). The first time shm adds its block to an existing
+`~/.zshrc` or `~/.zshenv` it saves the same kind of backup. Put your own config
+in new files instead.
 
 ## Development
 

@@ -81,9 +81,21 @@ func (s *RealSystem) WriteFile(path string, data []byte, perm fs.FileMode) error
 func (s *RealSystem) searchPath() string {
 	return strings.Join([]string{
 		filepath.Join(s.home, ".local", "bin"),
-		filepath.Join(s.home, ".local", "share", "mise", "shims"),
+		filepath.Join(s.miseDataDir(), "shims"),
 		os.Getenv("PATH"),
 	}, string(os.PathListSeparator))
+}
+
+// miseDataDir is where mise keeps its data: MISE_DATA_DIR, else
+// $XDG_DATA_HOME/mise, else ~/.local/share/mise.
+func (s *RealSystem) miseDataDir() string {
+	if dir := os.Getenv("MISE_DATA_DIR"); dir != "" {
+		return dir
+	}
+	if dir := os.Getenv("XDG_DATA_HOME"); dir != "" {
+		return filepath.Join(dir, "mise")
+	}
+	return filepath.Join(s.home, ".local", "share", "mise")
 }
 
 func (s *RealSystem) LookPath(file string) (string, error) {

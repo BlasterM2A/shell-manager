@@ -41,6 +41,37 @@ func TestRunPrefersUserBin(t *testing.T) {
 	assert.Equal(t, "from-home\n", string(out))
 }
 
+func TestLookPathFindsMiseShimsHonoringMiseDataDir(t *testing.T) {
+	sys := realSystem(t)
+	home := sys.HomeDir()
+	t.Setenv("MISE_DATA_DIR", "")
+	t.Setenv("XDG_DATA_HOME", "")
+	defaultShim := filepath.Join(home, ".local", "share", "mise", "shims", "a-default")
+	xdgShim := filepath.Join(home, "xdg", "mise", "shims", "a-xdg")
+	miseShim := filepath.Join(home, "mise-data", "shims", "a-mise")
+	for _, p := range []string{defaultShim, xdgShim, miseShim} {
+		writeExecutable(t, p, "exit 0")
+	}
+
+	p, err := sys.LookPath("a-default")
+	require.NoError(t, err)
+	assert.Equal(t, defaultShim, p)
+	_, err = sys.LookPath("a-xdg")
+	require.Error(t, err)
+
+	t.Setenv("XDG_DATA_HOME", filepath.Join(home, "xdg"))
+	p, err = sys.LookPath("a-xdg")
+	require.NoError(t, err)
+	assert.Equal(t, xdgShim, p)
+
+	t.Setenv("MISE_DATA_DIR", filepath.Join(home, "mise-data"))
+	p, err = sys.LookPath("a-mise")
+	require.NoError(t, err)
+	assert.Equal(t, miseShim, p)
+	_, err = sys.LookPath("a-xdg")
+	require.Error(t, err)
+}
+
 func TestRunErrorIncludesOutputTail(t *testing.T) {
 	sys := realSystem(t)
 	writeExecutable(t, filepath.Join(sys.HomeDir(), ".local", "bin", "boom"), "echo exploded", "exit 3")
@@ -97,9 +128,14 @@ func TestDryRunRecordsWithoutTouching(t *testing.T) {
 
 func TestPaths(t *testing.T) {
 	p := NewPaths("/h")
-	assert.Equal(t, "/h/.zshrc", p.Stub)
-	assert.Equal(t, "/h/.config/shell-manager/zsh.d", p.ZshD)
-	assert.Equal(t, "/h/.local/state/shell-manager/state.toml", p.StateFile)
+	assert.Equal(t, "/h/.zshrc", p.Zshrc)
+	assert.Equal(t, "/h/.zshenv", p.Zshenv)
+	assert.Equal(t, "/h/.zsh", p.ZshDir)
+	assert.Equal(t, "/h/.shm", p.ShmDir)
+	assert.Equal(t, "/h/.shm/state.toml", p.StateFile)
+	assert.Equal(t, "/h/.shm/lock", p.LockFile)
+	assert.Equal(t, "/h/.shm/shm.log", p.LogFile)
+	assert.Equal(t, "/h/.shm/tmp", p.TmpDir)
 	assert.Equal(t, "/h/.antidote", p.Expand("~/.antidote"))
 	assert.Equal(t, "/etc/x", p.Expand("/etc/x"))
 }

@@ -1,2 +1,0 @@
-# ~/.zshrc — managed by shell-manager. Personal config: ~/.config/zsh/*.d
-source "$HOME/.config/shell-manager/zshrc"

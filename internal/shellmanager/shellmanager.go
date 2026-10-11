@@ -2,6 +2,7 @@ package shellmanager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -80,14 +81,6 @@ func (e *Engine) apply(ctx context.Context, m mode, force bool, events chan<- Ev
 	if err := e.checkOS(); err != nil {
 		return rep, err
 	}
-	migrated, err := e.migrateFromShellSetup()
-	for _, r := range migrated {
-		events <- FileFinished(r)
-	}
-	rep.Files = append(rep.Files, migrated...)
-	if err != nil {
-		return rep, fmt.Errorf("migrating from shell-setup: %w", err)
-	}
 	unlock, err := e.System.Lock(e.Paths.LockFile)
 	if err != nil {
 		return rep, err
@@ -124,12 +117,6 @@ func (e *Engine) apply(ctx context.Context, m mode, force bool, events chan<- Ev
 			blocked[t.ID] = true
 		}
 	}
-	for _, t := range okTools {
-		for _, r := range e.purgeLegacy(ctx, t) {
-			events <- FileFinished(r)
-			rep.Files = append(rep.Files, r)
-		}
-	}
 
 	if err := ctx.Err(); err != nil {
 		return rep, err
@@ -141,29 +128,28 @@ func (e *Engine) apply(ctx context.Context, m mode, force bool, events chan<- Ev
 		paths:   e.Paths,
 		files:   fileWriter{sys: e.System, state: state, now: e.Now},
 	}
-	files, err := w.apply(okTools, force)
+	files, shellErr := w.apply(okTools, force)
 	for _, f := range files {
 		events <- FileFinished(f)
 	}
 	rep.Files = append(rep.Files, files...)
-	if err != nil {
-		return rep, err
-	}
-	if err := e.removeCompatLink(); err != nil {
-		return rep, fmt.Errorf("removing the shell-setup compatibility link: %w", err)
+	// A broken shm block in a user file fails on its own: the alias link and
+	// the login shell are still set up, and the error is reported at the end.
+	if shellErr != nil && !errors.Is(shellErr, ErrBrokenMarkers) {
+		return rep, shellErr
 	}
 	if e.Executable != "" {
 		alias, err := e.ensureAlias()
 		events <- FileFinished(alias)
 		rep.Files = append(rep.Files, alias)
 		if err != nil {
-			return rep, fmt.Errorf("linking %s: %w", AliasName, err)
+			return rep, errors.Join(shellErr, fmt.Errorf("linking %s: %w", AliasName, err))
 		}
 	}
 	if rep.ShellChanged, err = e.ensureDefaultShell(ctx); err != nil {
-		return rep, fmt.Errorf("changing the default shell: %w", err)
+		return rep, errors.Join(shellErr, fmt.Errorf("changing the default shell: %w", err))
 	}
-	return rep, nil
+	return rep, shellErr
 }
 
 func (e *Engine) applyTool(ctx context.Context, env Env, t Tool, m mode, blocked map[string]bool, events chan<- Event) ToolReport {

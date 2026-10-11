@@ -32,8 +32,6 @@ const (
 	ResultModified Result = "modified" // managed file edited by hand, left alone
 	ResultWarned   Result = "warned"   // optional tool failed
 	ResultFailed   Result = "failed"
-	ResultRemoved  Result = "removed"  // legacy leftover purged
-	ResultMigrated Result = "migrated" // moved over from a shell-setup install
 )
 
 // Event is published on the operation's channel while it runs.
