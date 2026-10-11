@@ -14,6 +14,7 @@ tasks:
     cmds:
       - go test ./...
       - bash tests/test_install.sh
+      - bash tests/test_guard_home.sh
   test:one:
     desc: "Run tests matching a regex: task test:one -- TestPaths"
     preconditions:
