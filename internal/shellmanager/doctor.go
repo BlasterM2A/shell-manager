@@ -5,6 +5,7 @@ import (
 	"maps"
 	"path/filepath"
 	"slices"
+	"strings"
 )
 
 // Doctor checks the machine without changing anything.
@@ -50,6 +51,12 @@ func (e *Engine) Doctor(ctx context.Context) (Report, error) {
 				Detail: "left by an older install; run shm update to remove it",
 			})
 		}
+	}
+	if left := e.oldInstallLeftovers(); len(left) > 0 {
+		rep.Checks = append(rep.Checks, CheckResult{
+			Name: "shell-setup leftovers", Status: CheckWarn,
+			Detail: strings.Join(left, ", ") + " (run shm setup)",
+		})
 	}
 	return rep, nil
 }

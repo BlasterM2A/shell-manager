@@ -80,6 +80,14 @@ func (e *Engine) apply(ctx context.Context, m mode, force bool, events chan<- Ev
 	if err := e.checkOS(); err != nil {
 		return rep, err
 	}
+	migrated, err := e.migrateFromShellSetup()
+	for _, r := range migrated {
+		events <- FileFinished(r)
+	}
+	rep.Files = append(rep.Files, migrated...)
+	if err != nil {
+		return rep, fmt.Errorf("migrating from shell-setup: %w", err)
+	}
 	unlock, err := e.System.Lock(e.Paths.LockFile)
 	if err != nil {
 		return rep, err

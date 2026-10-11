@@ -47,7 +47,7 @@ func toolLabel(id string, a shellmanager.Action) string {
 
 func resultStatus(r shellmanager.Result) styles.Status {
 	switch r {
-	case shellmanager.ResultOK, shellmanager.ResultRemoved:
+	case shellmanager.ResultOK, shellmanager.ResultRemoved, shellmanager.ResultMigrated:
 		return styles.StatusOK
 	case shellmanager.ResultSkipped:
 		return styles.StatusSkip

@@ -1,0 +1,166 @@
+package shellmanager
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+const oldStub = "# ~/.zshrc — managed by shell-setup.\nsource \"$HOME/.config/shell-setup/zshrc\"\n"
+
+// seedOldInstall lays out a shell-setup v0.1.x install under the engine's
+// home: config dir with a generated zshrc and a fragment, state dir with
+// state.toml (hashes for the stub and both files), its log, the old binary
+// and the shs alias link.
+func seedOldInstall(t *testing.T, e *Engine) oldInstall {
+	t.Helper()
+	old := oldInstallPaths(e.Paths.Home)
+	write := func(path, content string) {
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+		require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
+	}
+	zshrc := filepath.Join(old.ConfigDir, "zshrc")
+	fragment := filepath.Join(old.ConfigDir, "zsh.d", "10-a.zsh")
+	write(zshrc, "# old generated zshrc\n")
+	write(fragment, "# old fragment\n")
+	write(e.Paths.Stub, oldStub)
+	write(filepath.Join(old.StateDir, "shell-setup.log"), "old log\n")
+	st := &State{
+		SchemaVersion: stateSchemaVersion,
+		Files: map[string]string{
+			e.Paths.Stub: hashBytes([]byte(oldStub)),
+			zshrc:        hashBytes([]byte("# old generated zshrc\n")),
+			fragment:     hashBytes([]byte("# old fragment\n")),
+		},
+		Versions: map[string]string{"nerdfont": "v3.5.1"},
+	}
+	require.NoError(t, st.Save(e.System, filepath.Join(old.StateDir, "state.toml")))
+	writeExecutable(t, old.Binary)
+	require.NoError(t, os.Symlink("shell-setup", old.Alias))
+	return old
+}
+
+func TestMigrateMovesConfigAndStateAndRewritesStateKeys(t *testing.T) {
+	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
+	old := seedOldInstall(t, e)
+
+	reports, err := e.migrateFromShellSetup()
+	require.NoError(t, err)
+
+	assert.NoDirExists(t, old.ConfigDir)
+	assert.NoDirExists(t, old.StateDir)
+	assert.Equal(t, "# old fragment\n", read(t, filepath.Join(e.Paths.ConfigDir, "zsh.d", "10-a.zsh")))
+	assert.FileExists(t, filepath.Join(e.Paths.StateDir, "shell-setup.log"))
+	st, err := LoadState(e.System, e.Paths.StateFile)
+	require.NoError(t, err)
+	assert.Contains(t, st.Files, filepath.Join(e.Paths.ConfigDir, "zsh.d", "10-a.zsh"))
+	assert.Contains(t, st.Files, e.Paths.GeneratedZshrc)
+	assert.Contains(t, st.Files, e.Paths.Stub)
+	assert.NotContains(t, st.Files, filepath.Join(old.ConfigDir, "zshrc"))
+	assert.Equal(t, "v3.5.1", st.Versions["nerdfont"])
+	assert.Contains(t, reports, FileReport{Path: e.Paths.ConfigDir, Result: ResultMigrated})
+	assert.Contains(t, reports, FileReport{Path: e.Paths.StateDir, Result: ResultMigrated})
+}
+
+func TestMigrateRemovesOldBinaryAndAliasLink(t *testing.T) {
+	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
+	old := seedOldInstall(t, e)
+
+	reports, err := e.migrateFromShellSetup()
+	require.NoError(t, err)
+
+	assert.NoFileExists(t, old.Binary)
+	_, err = os.Lstat(old.Alias)
+	assert.ErrorIs(t, err, os.ErrNotExist)
+	assert.Contains(t, reports, FileReport{Path: old.Binary, Result: ResultRemoved})
+	assert.Contains(t, reports, FileReport{Path: old.Alias, Result: ResultRemoved})
+}
+
+func TestMigrateKeepsRealFileNamedShs(t *testing.T) {
+	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
+	old := oldInstallPaths(e.Paths.Home)
+	writeExecutable(t, old.Alias, "echo mine")
+
+	_, err := e.migrateFromShellSetup()
+	require.NoError(t, err)
+
+	assert.Contains(t, read(t, old.Alias), "echo mine")
+}
+
+func TestMigrateMergesIntoStateDirCreatedByTheLogger(t *testing.T) {
+	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
+	old := seedOldInstall(t, e)
+	// The logger opens the new log before migration runs.
+	require.NoError(t, os.MkdirAll(e.Paths.StateDir, 0o755))
+	require.NoError(t, os.WriteFile(e.Paths.LogFile, []byte("current run\n"), 0o644))
+
+	_, err := e.migrateFromShellSetup()
+	require.NoError(t, err)
+
+	assert.Equal(t, "current run\n", read(t, e.Paths.LogFile), "never overwritten")
+	st, err := LoadState(e.System, e.Paths.StateFile)
+	require.NoError(t, err)
+	assert.Contains(t, st.Files, e.Paths.GeneratedZshrc)
+	assert.NoDirExists(t, old.StateDir)
+}
+
+func TestMigrateLeavesConflictingEntriesInOldDir(t *testing.T) {
+	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
+	old := seedOldInstall(t, e)
+	require.NoError(t, os.MkdirAll(e.Paths.ConfigDir, 0o755))
+	require.NoError(t, os.WriteFile(e.Paths.GeneratedZshrc, []byte("# new\n"), 0o644))
+
+	_, err := e.migrateFromShellSetup()
+	require.NoError(t, err)
+
+	assert.Equal(t, "# new\n", read(t, e.Paths.GeneratedZshrc), "never overwritten")
+	assert.FileExists(t, filepath.Join(old.ConfigDir, "zshrc"), "conflict stays behind")
+	assert.FileExists(t, filepath.Join(e.Paths.ConfigDir, "zsh.d", "10-a.zsh"), "the rest moves")
+	assert.Contains(t, e.oldInstallLeftovers(), old.ConfigDir)
+}
+
+func TestMigrateIsIdempotent(t *testing.T) {
+	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
+	seedOldInstall(t, e)
+	_, err := e.migrateFromShellSetup()
+	require.NoError(t, err)
+
+	reports, err := e.migrateFromShellSetup()
+	require.NoError(t, err)
+	assert.Empty(t, reports)
+	assert.Empty(t, e.oldInstallLeftovers())
+}
+
+func TestSetupAfterMigrationRewritesStubWithoutBackup(t *testing.T) {
+	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
+	seedOldInstall(t, e)
+
+	rep, _, err := runOp(t, setupOp(e))
+	require.NoError(t, err)
+
+	assert.Contains(t, read(t, e.Paths.Stub), `source "$HOME/.config/shell-manager/zshrc"`)
+	backups, err := filepath.Glob(filepath.Join(e.Paths.Home, ".zshrc.bak.*"))
+	require.NoError(t, err)
+	assert.Empty(t, backups)
+	res, ok := fileResult(rep, e.Paths.ConfigDir)
+	assert.True(t, ok)
+	assert.Equal(t, ResultMigrated, res)
+}
+
+func TestDoctorReportsShellSetupLeftovers(t *testing.T) {
+	e, _, _ := newTestEngine(t, map[string]string{"a": fakeTool("a", KindBuiltin, "")})
+	old := oldInstallPaths(e.Paths.Home)
+	writeExecutable(t, old.Binary)
+
+	rep, err := e.Doctor(context.Background())
+	require.NoError(t, err)
+
+	c := checksByName(rep)["shell-setup leftovers"]
+	assert.Equal(t, CheckWarn, c.Status)
+	assert.Contains(t, c.Detail, old.Binary)
+	assert.Contains(t, c.Detail, "run shm setup")
+}
