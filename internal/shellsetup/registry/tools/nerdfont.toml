@@ -10,3 +10,7 @@ dest = "~/.local/share/fonts/JetBrainsMonoNerdFont"
 
 [check]
 path = "~/.local/share/fonts/JetBrainsMonoNerdFont/JetBrainsMonoNerdFont-Regular.ttf"
+
+# The old install.sh unzipped the font straight into ~/.local/share/fonts.
+[legacy]
+paths = ["~/.local/share/fonts/JetBrainsMonoNerdFont*.ttf"]

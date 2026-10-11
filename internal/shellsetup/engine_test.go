@@ -75,7 +75,6 @@ func newTestEngine(t *testing.T, manifests map[string]string) (*Engine, *recorde
 
 	backend := &fakeBackend{rec: rec, failures: map[string]error{}}
 	paths := NewPaths(sys.HomeDir())
-	paths.Legacy = []string{filepath.Join(sys.HomeDir(), ".local", "bin", "starship")}
 	e := &Engine{
 		System:    sys,
 		Fetcher:   &fakeFetcher{},

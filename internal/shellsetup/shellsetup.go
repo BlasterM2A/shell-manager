@@ -116,6 +116,12 @@ func (e *Engine) apply(ctx context.Context, m mode, force bool, events chan<- Ev
 			blocked[t.ID] = true
 		}
 	}
+	for _, t := range okTools {
+		for _, r := range e.purgeLegacy(ctx, t) {
+			events <- FileFinished(r)
+			rep.Files = append(rep.Files, r)
+		}
+	}
 
 	if err := ctx.Err(); err != nil {
 		return rep, err
@@ -131,7 +137,7 @@ func (e *Engine) apply(ctx context.Context, m mode, force bool, events chan<- Ev
 	for _, f := range files {
 		events <- FileFinished(f)
 	}
-	rep.Files = files
+	rep.Files = append(rep.Files, files...)
 	if err != nil {
 		return rep, err
 	}
@@ -143,7 +149,7 @@ func (e *Engine) apply(ctx context.Context, m mode, force bool, events chan<- Ev
 			return rep, fmt.Errorf("linking %s: %w", AliasName, err)
 		}
 	}
-	if err := e.ensureDefaultShell(ctx); err != nil {
+	if rep.ShellChanged, err = e.ensureDefaultShell(ctx); err != nil {
 		return rep, fmt.Errorf("changing the default shell: %w", err)
 	}
 	return rep, nil
@@ -296,18 +302,22 @@ func (e *Engine) loginShell(ctx context.Context) string {
 	return e.System.Getenv("SHELL")
 }
 
-func (e *Engine) ensureDefaultShell(ctx context.Context) error {
+// ensureDefaultShell makes zsh the login shell; changed reports whether it
+// had to change it.
+func (e *Engine) ensureDefaultShell(ctx context.Context) (changed bool, err error) {
 	if filepath.Base(e.loginShell(ctx)) == "zsh" {
-		return nil
+		return false, nil
 	}
 	zsh, err := e.System.LookPath("zsh")
 	if err != nil {
-		return err
+		return false, err
 	}
 	if _, err := e.System.Run(ctx, Cmd{Name: "chsh", Args: []string{"-s", zsh}, Interactive: true}); err == nil {
-		return nil
+		return true, nil
 	}
 	// chsh fails on accounts without a password (SSH-key-only); retry as root.
-	_, err = e.System.Run(ctx, e.privileged("chsh", "-s", zsh, e.System.Getenv("USER")))
-	return err
+	if _, err := e.System.Run(ctx, e.privileged("chsh", "-s", zsh, e.System.Getenv("USER"))); err != nil {
+		return false, err
+	}
+	return true, nil
 }

@@ -16,3 +16,7 @@ snippet = 'eval "$(starship init zsh)"'
 [[files]]
 src = "files/starship/starship.toml"
 dest = "~/.config/starship.toml"
+
+# The old install.sh put starship here; purged once mise provides it.
+[legacy]
+paths = ["~/.local/bin/starship"]

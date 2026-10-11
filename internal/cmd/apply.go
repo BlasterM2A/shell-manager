@@ -35,6 +35,17 @@ func runApply(ctx context.Context, f *Factory, e *shellsetup.Engine, title strin
 	return nil
 }
 
+// nextStep tells the user how to start using the new shell config. A login
+// shell changed with chsh is picked up by new terminal windows on most
+// emulators; the current shell can only be replaced by the user.
+func nextStep(rep shellsetup.Report) string {
+	if rep.ShellChanged {
+		return "Run `exec zsh` (or open a new terminal) to start using zsh. " +
+			"If new terminals still open your old shell, log out and back in."
+	}
+	return "Run `exec zsh` to load the new configuration."
+}
+
 func renderSummary(c common.Common, home, logFile string, rep, doctor shellsetup.Report) string {
 	var b strings.Builder
 	b.WriteString("\n")
@@ -46,9 +57,13 @@ func renderSummary(c common.Common, home, logFile string, rep, doctor shellsetup
 			Text:   "Some required tools are missing. Details: " + shortPath(home, logFile),
 		}))
 	} else {
+		b.WriteString(notice.Render(c, notice.Props{Status: styles.StatusOK, Text: "Done."}))
+		b.WriteString("\n")
+		b.WriteString(notice.Render(c, notice.Props{Status: styles.StatusInfo, Text: nextStep(rep)}))
+		b.WriteString("\n")
 		b.WriteString(notice.Render(c, notice.Props{
-			Status: styles.StatusOK,
-			Text:   "Done. Log out and back in, then select 'JetBrainsMono Nerd Font' in your terminal.",
+			Status: styles.StatusInfo,
+			Text:   "Select 'JetBrainsMono Nerd Font' in your terminal's font settings.",
 		}))
 	}
 	b.WriteString("\n")
