@@ -55,5 +55,20 @@ func (e *Engine) purgeLegacy(ctx context.Context, t Tool) []FileReport {
 		}
 		reports = append(reports, FileReport{Path: it.name, Result: res})
 	}
+	if removedAny(reports) {
+		for _, argv := range t.Legacy.AfterPurge {
+			// Best effort, like the purge itself: the leftovers are gone either way.
+			_, _ = e.System.Run(ctx, Cmd{Name: argv[0], Args: argv[1:]})
+		}
+	}
 	return reports
+}
+
+func removedAny(reports []FileReport) bool {
+	for _, r := range reports {
+		if r.Result == ResultRemoved {
+			return true
+		}
+	}
+	return false
 }

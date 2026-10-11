@@ -28,7 +28,9 @@ After the first `init`:
 1. Run `exec zsh`, or open a new terminal. If a new terminal still opens
    your old shell, log out and back in (some terminals only pick up a new
    login shell in a new session).
-2. Select **JetBrainsMono Nerd Font** in your terminal's font settings.
+2. Close **all** terminal windows and reopen the terminal (a running terminal
+   keeps the font list it loaded at start), then select **JetBrainsMono Nerd
+   Font** in its font settings.
 
 ## Migrating from the old install.sh
 
@@ -41,8 +43,10 @@ Run the one-liner above once. Then:
   to `~/.local/share/fonts/JetBrainsMonoNerdFont`. Once each new copy is in
   place, the old one is removed automatically (`~/.local/bin/starship`,
   `~/.local/bin/zoxide`, apt's `fzf` — which asks for sudo — and the old
-  `JetBrainsMonoNerdFont*.ttf` files in `~/.local/share/fonts`). If a removal
-  fails, `shs doctor` lists the leftover and `shs update` retries it.
+  `JetBrainsMono*NerdFont*.ttf` files in `~/.local/share/fonts`, after which
+  the font cache is refreshed). Reopen your terminal afterwards: one that was
+  already running can show the old fonts as empty boxes. If a removal fails,
+  `shs doctor` lists the leftover and `shs update` retries it.
 
 ## Commands
 

@@ -215,7 +215,9 @@ herramienta sustituye — `paths` (archivos; admite `~/` y comodines) y `apt`
 (paquetes). Se purga en `init`/`update` solo cuando la herramienta ha
 terminado OK con su backend en esa ejecución (nunca se deja al usuario sin
 la herramienta); los paquetes con `sudo apt-get remove -y`, solo si dpkg
-los da por instalados. Un fallo al purgar es un aviso, no un error; `doctor`
+los da por instalados. `after_purge` (comandos) se ejecuta una vez si se
+borró algo — p. ej. `fc-cache -f` para nerdfont; las apps ya abiertas (el
+terminal) siguen necesitando reabrirse, y el mensaje final lo indica. Un fallo al purgar es un aviso, no un error; `doctor`
 sigue mostrando el resto hasta que `update` lo consiga.
 
 ### Catálogo v1

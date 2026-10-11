@@ -153,6 +153,11 @@ func loadTool(fsys fs.FS, path string) (Tool, error) {
 				return Tool{}, fmt.Errorf("legacy path %q: %w", p, err)
 			}
 		}
+		for _, argv := range t.Legacy.AfterPurge {
+			if len(argv) == 0 {
+				return Tool{}, errors.New("legacy.after_purge contains an empty command")
+			}
+		}
 	}
 	return t, nil
 }
